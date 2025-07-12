@@ -191,14 +191,14 @@ export default async function MaterialPage({ params }: { params: { material: str
                 <Section id={reportSections[0].id} title={reportSections[0].title} icon={reportSections[0].icon}>
                     <SubSection title="Market Fundamentals">
                         <DataPoint label="Market Size" value={`$${materialData.market_size_usd_billions}B globally`} />
-                        <DataPoint label="Annual Growth" value={`${materialData.annual_growth_rate_pct}%`} />
+                        <DataPoint label="Annual Growth" value={materialData.annual_growth_rate_pct ? `${(materialData.annual_growth_rate_pct * 100).toFixed(2)}%` : "N/A"} />
                         <DataPoint label="Market Stage" value={materialData.market_maturity_stage} />
                         <DataPoint label="Key Industries" value={materialData.industries} />
                     </SubSection>
                     <SubSection title="Current Pricing">
                         <DataPoint label="Market Price" value={`$${materialData.current_market_value_kg}/kg`} />
                         <DataPoint label="Upside Potential" value={`$${materialData.best_case_value_kg}/kg`} />
-                        <DataPoint label="Typical Margins" value={`${materialData.typical_margin_pct_low}% - ${materialData.typical_margin_pct_high}%`} />
+                        <DataPoint label="Typical Margins" value={materialData.typical_margin_pct_low && materialData.typical_margin_pct_high ? `${(materialData.typical_margin_pct_low * 100).toFixed(2)}% - ${(materialData.typical_margin_pct_high * 100).toFixed(2)}%` : "N/A"} />
                     </SubSection>
                 </Section>
 

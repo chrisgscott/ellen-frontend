@@ -1,5 +1,6 @@
 import * as React from "react"
-import { LogOut, LayoutDashboard, FlaskConical } from "lucide-react"
+import { LogOut, LayoutDashboard, Lightbulb, Search } from "lucide-react"
+import Image from "next/image"
 
 import { createClient } from "@/lib/supabase/server"
 import { SearchForm } from "@/components/search-form"
@@ -7,9 +8,6 @@ import { AppSidebarNav } from "@/components/app-sidebar-nav"
 import {
   Sidebar,
   SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -23,7 +21,7 @@ export async function AppSidebar(
   props: React.ComponentProps<typeof Sidebar>
 ) {
   const supabase = await createClient()
-  const { data: materials, error } = await supabase
+  const { data: materials } = await supabase
     .from("materials")
     .select("material")
     .order("material", { ascending: true })
@@ -45,8 +43,8 @@ export async function AppSidebar(
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
-        <div className="flex h-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <FlaskConical className="size-6" />
+        <div className="flex h-12 items-center justify-start px-2">
+          <Image src="/images/ellen-logo.svg" width={48} height={48} alt="ELLEN logo" className="rounded-sm" priority />
         </div>
         <SearchForm />
       </SidebarHeader>
@@ -54,7 +52,7 @@ export async function AppSidebar(
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <a href="/">
+              <a href="/dashboard">
                 <LayoutDashboard className="mr-2 size-4 text-primary" />
                 Dashboard
               </a>
@@ -67,8 +65,16 @@ export async function AppSidebar(
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <FlaskConical className="mr-2 size-4 text-primary" />
+                <Search className="mr-2 text-primary" size={20} />
                 Researcher
+              </a>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <a href="/opportunities">
+                <Lightbulb className="mr-2 size-4 text-primary" />
+                Opportunities
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
