@@ -13,10 +13,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { RelatedMaterialsCard } from '@/components/related-materials-card';
 import { Search, Send, ArrowRight, ExternalLink } from 'lucide-react';
 
-// Endpoint for n8n chat workflow – override via env if needed
-const WEBHOOK_URL =
-  process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL ??
-  'https://n8n-od58.onrender.com/webhook-test/452a92d7-2d2a-45f5-a47d-e9f495a326df';
+// Endpoint for new in-house streaming chat API
+const API_URL = '/api/chat';
 
 // Friendly loading messages to show while waiting for the webhook
 const LOADING_MESSAGES = [
@@ -73,13 +71,13 @@ function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
 
         {/* Message Content */}
         <div className={`flex-1 ${message.role === 'user' ? 'text-right' : ''}`}>
-          {isLoading ? (
+          {isLoading && !message.content.trim() ? (
             <div className="space-y-2">
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-5/6" />
               <p className="text-xs italic text-muted-foreground">
-                {message.content}
+                Analyzing material supply chains…
               </p>
             </div>
           ) : (
@@ -87,6 +85,9 @@ function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {message.content}
               </ReactMarkdown>
+              {isLoading && (
+                <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1" />
+              )}
             </div>
           )}
         </div>
@@ -199,72 +200,94 @@ export default function ChatPage() {
     setThreads(prev => [...prev, newThread]);
 
     
-    // Call n8n webhook for the AI response
-    fetch(WEBHOOK_URL, {
+    // Call in-house chat API (SSE streaming)
+    fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: queryText,
-        sessionId: threadId,
-        messages: newThread.messages,
-      }),
+      body: JSON.stringify({ query: queryText, session_id: threadId }),
     })
       .then(async (res) => {
-        if (!res.ok) {
+        if (!res.ok || !res.body) {
           throw new Error(`Request failed with status ${res.status}`);
         }
-        return res.json();
-      })
-      .then((raw) => {
-        // Normalize n8n response shapes:
-        // 1) Array wrapper: [ { output: {...} } ]
-        // 2) Object wrapper: { output: {...} }
-        // 3) Direct payload: { answer, sources, ... }
-        const unwrap = (v: any): any => {
-          if (!v || typeof v !== 'object') return v;
-          if (Array.isArray(v)) return unwrap(v[0]);
-          if ('output' in v) return unwrap((v as any).output);
-          return v;
-        };
-        let data: any = unwrap(raw);
-        // If the agent returned a JSON string, parse it
-        if (typeof data === 'string') {
-          try {
-            data = JSON.parse(data);
-          } catch {
-            // leave as string if JSON.parse fails
+        // Stream SSE
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let assistantContent = '';
+
+        const processBuffer = () => {
+          let idx;
+          while ((idx = buffer.indexOf('\n\n')) !== -1) {
+            const rawLine = buffer.slice(0, idx).trim();
+            buffer = buffer.slice(idx + 2);
+            if (!rawLine.startsWith('data:')) continue;
+            const jsonStr = rawLine.slice(5).trim();
+            if (jsonStr === '[DONE]') {
+              setThreads((prev) =>
+                prev.map((t) =>
+                  t.id === threadId ? { ...t, isLoading: false } : t
+                )
+              );
+              continue;
+            }
+            let payload: any;
+            try {
+              payload = JSON.parse(jsonStr);
+            } catch {
+              continue;
+            }
+            if (payload.type === 'token') {
+              assistantContent += payload.content;
+              setThreads((prev) =>
+                prev.map((t) => {
+                  if (t.id !== threadId) return t;
+                  const updatedMessages = [...t.messages];
+                  updatedMessages[updatedMessages.length - 1] = {
+                    role: 'assistant',
+                    content: assistantContent,
+                  };
+                  return { ...t, messages: updatedMessages };
+                })
+              );
+            } else if (payload.type === 'materials') {
+              console.log('Received materials:', payload.content);
+              setThreads((prev) =>
+                prev.map((t) => 
+                  t.id === threadId ? { ...t, relatedMaterials: payload.content } : t
+                )
+              );
+            } else if (payload.type === 'sources') {
+              setThreads((prev) =>
+                prev.map((t) => 
+                  t.id === threadId ? { ...t, sources: payload.content } : t
+                )
+              );
+            } else if (payload.type === 'suggestions') {
+              setThreads((prev) =>
+                prev.map((t) => 
+                  t.id === threadId ? { ...t, suggestedQuestions: payload.content } : t
+                )
+              );
+            }
           }
-        }
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('Webhook raw response:', raw);
-          console.log('Webhook parsed data:', data);
-        }
-        setThreads((prev) =>
-          prev.map((thread) => {
-            if (thread.id !== threadId) return thread;
-            const updatedMessages = [...thread.messages];
-            updatedMessages[updatedMessages.length - 1] = {
-              role: 'assistant',
-              content:
-                data.answer ??
-                data.content ??
-                (typeof data === 'string' ? data : 'No answer returned.'),
-            };
-            return {
-              ...thread,
-              messages: updatedMessages,
-              relatedMaterials:
-                data.relatedMaterials ?? data.related_materials ?? [],
-              sources: data.sources ?? [],
-              suggestedQuestions: data.suggestedQuestions ?? [],
-              isLoading: false,
-            };
-          })
-        );
+        };
+
+        const pump = async (): Promise<void> => {
+          const { done, value } = await reader.read();
+          if (done) {
+            processBuffer();
+            return;
+          }
+          buffer += decoder.decode(value, { stream: true });
+          processBuffer();
+          await pump();
+        };
+        await pump();
       })
       .catch((err) => {
         if (process.env.NODE_ENV !== 'production') {
-          console.error('Webhook fetch error:', err);
+          console.error('Chat API fetch error:', err);
         }
         setThreads((prev) =>
           prev.map((thread) => {
@@ -322,6 +345,10 @@ export default function ChatPage() {
               <TabsContent value="answer" className="mt-0 p-0">
                 <div className="max-w-4xl mx-auto p-4">
                   {/* Related Materials Cards */}
+                  {(() => {
+                    console.log('Thread related materials:', thread.relatedMaterials);
+                    return null;
+                  })()}
                   {thread.relatedMaterials.length > 0 && (
                     <div className="mb-6">
                       <h2 className="text-sm font-medium text-muted-foreground mb-3">Related Materials</h2>
