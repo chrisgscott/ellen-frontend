@@ -1,13 +1,20 @@
 # Project Log
 
 ## Snapshot (as of 2025-07-12)
-- Chat migration from n8n webhook to in-house streaming API completed
+- Migrated chat API to OpenAI Responses API with MCP tools integration
+- Real-time streaming of tokens, tool calls, and tool results via SSE
 - Materials extraction now works from AI response using 'material' column in Supabase
-- Streaming SSE implementation with real-time token, sources, materials, and suggestions
-- Fixed environment variable issues and middleware blocking API routes
+- MCP tools configured for direct Supabase querying by AI assistant
+- Fixed TypeScript errors and streaming chunk event types based on OpenAI docs
 - Enhanced ELLEN persona prompt matching original n8n workflow
 
 ---
+
+[2025-07-12 23:06] — Completed comprehensive chat API migration with full MCP ecosystem integration. Added Pinecone MCP server for vector search, enhanced system prompt with clear tool usage workflow, implemented proper streaming event handling for all supported OpenAI event types, and fixed TypeScript errors. Chat API now features: conversation state management, web search capabilities, Supabase database access, Pinecone vector search, and robust streaming with materials/suggestions extraction.
+
+[2025-07-12 23:02] — Enhanced chat API with conversation state management, web search, and improved MCP tools. Implemented conversation history storage using OpenAI's conversation state patterns, added web_search_preview tool for real-time information, configured Supabase MCP with proper authentication headers, and enabled response storage for 30-day retention. Chat now maintains context across sessions and can access both database and web information.
+
+[2025-07-12 22:59] — Completed migration to OpenAI Responses API with MCP tools integration. Fixed TypeScript errors by using correct streaming event types (response.output_text.delta, response.completed). Added comprehensive tool call streaming support with response.output_item.added, response.function_call_arguments.delta, and response.function_call_arguments.done events.
 
 [2025-07-12 22:33] — Fixed database schema using Supabase MCP tools. Discovered materials table uses 'material' column (not 'uuid'). Confirmed "Palladium" exists in database with capital P. Updated query to use correct column names for materials display.
 
