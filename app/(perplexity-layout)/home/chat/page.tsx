@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
@@ -13,10 +13,25 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { RelatedMaterialsCard } from '@/components/related-materials-card';
 import { Search, Send, ArrowRight, ExternalLink } from 'lucide-react';
 
+// Endpoint for n8n chat workflow – override via env if needed
+const WEBHOOK_URL =
+  process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL ??
+  'https://n8n-od58.onrender.com/webhook-test/452a92d7-2d2a-45f5-a47d-e9f495a326df';
+
+// Friendly loading messages to show while waiting for the webhook
+const LOADING_MESSAGES = [
+  'Analyzing material supply chains…',
+  'Cross-checking vector store sources…',
+  'Consulting criticality indices…',
+  'Running strategic risk model…',
+];
+
 interface Material {
-  id: number;
+  uuid: string;
   name: string;
-  description: string;
+  short_summary: string;
+  symbol?: string;
+  material_card_color?: string;
 }
 
 interface ConversationThread {
@@ -63,6 +78,9 @@ function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-5/6" />
+              <p className="text-xs italic text-muted-foreground">
+                {message.content}
+              </p>
             </div>
           ) : (
             <div className={`prose prose-sm max-w-none ${message.role === 'assistant' ? 'prose-headings:mt-4 prose-headings:mb-2' : ''}`}>
@@ -132,19 +150,9 @@ function SourcesList({ sources }: SourcesListProps) {
   );
 }
 
-// Mock data for initial development
-const mockRelatedMaterials = [
-  { id: 1, name: 'Magnesium', description: 'Lightweight metal with many applications' },
-  { id: 2, name: 'Lithium', description: 'Critical for battery technology' },
-  { id: 3, name: 'Cobalt', description: 'Used in batteries and superalloys' },
-];
 
-const mockSuggestedQuestions = [
-  'What is the current market price of lithium?',
-  'How might upcoming supply and demand trends affect magnesium prices?',
-  'Are there regional differences in magnesium pricing?',
-  'What factors are influencing the stability of magnesium prices?',
-];
+
+
 
 export default function ChatPage() {
   const searchParams = useSearchParams();
@@ -154,73 +162,122 @@ export default function ChatPage() {
   const [newQuery, setNewQuery] = useState('');
 
 
-  // Initialize with the query from URL
+  // Initialize with the query from URL (run only once per mount)
+  const initializedRef = useRef(false);
   useEffect(() => {
-    if (initialQuery) {
+    if (!initializedRef.current && initialQuery) {
+      initializedRef.current = true;
       createNewThread(initialQuery);
     }
   }, [initialQuery]);
 
   const createNewThread = (queryText: string) => {
-    const threadId = Date.now().toString();
+    // Use a UUID instead of Date.now() to guarantee uniqueness even if
+    // createNewThread is invoked twice in the same millisecond (e.g. in
+    // React StrictMode development double render).
+    const threadId =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const newThread: ConversationThread = {
       id: threadId,
       query: queryText,
-      messages: [{ role: 'user', content: queryText }],
-      relatedMaterials: mockRelatedMaterials,
+      messages: [
+        { role: 'user', content: queryText },
+        {
+          role: 'assistant',
+          content:
+            LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)],
+        },
+      ],
+      relatedMaterials: [],
       sources: [],
-      suggestedQuestions: mockSuggestedQuestions,
+      suggestedQuestions: [],
       isLoading: true
     };
     
     setThreads(prev => [...prev, newThread]);
 
     
-    // Simulate API call
-    setTimeout(() => {
-      setThreads(prev => prev.map(thread => 
-        thread.id === threadId 
-          ? {
+    // Call n8n webhook for the AI response
+    fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: queryText,
+        sessionId: threadId,
+        messages: newThread.messages,
+      }),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error(`Request failed with status ${res.status}`);
+        }
+        return res.json();
+      })
+      .then((raw) => {
+        // Normalize n8n response shapes:
+        // 1) Array wrapper: [ { output: {...} } ]
+        // 2) Object wrapper: { output: {...} }
+        // 3) Direct payload: { answer, sources, ... }
+        const unwrap = (v: any): any => {
+          if (!v || typeof v !== 'object') return v;
+          if (Array.isArray(v)) return unwrap(v[0]);
+          if ('output' in v) return unwrap((v as any).output);
+          return v;
+        };
+        let data: any = unwrap(raw);
+        // If the agent returned a JSON string, parse it
+        if (typeof data === 'string') {
+          try {
+            data = JSON.parse(data);
+          } catch {
+            // leave as string if JSON.parse fails
+          }
+        }
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('Webhook raw response:', raw);
+          console.log('Webhook parsed data:', data);
+        }
+        setThreads((prev) =>
+          prev.map((thread) => {
+            if (thread.id !== threadId) return thread;
+            const updatedMessages = [...thread.messages];
+            updatedMessages[updatedMessages.length - 1] = {
+              role: 'assistant',
+              content:
+                data.answer ??
+                data.content ??
+                (typeof data === 'string' ? data : 'No answer returned.'),
+            };
+            return {
               ...thread,
-              messages: [...thread.messages, {
-                role: 'assistant',
-                content: `Based on the latest market data for ${queryText}, here's what I found:
-
-Magnesium prices have shown relative stability in Q3 2025, reflecting a 2.60% increase over the past month, though this is still 7.22% lower than a year ago.
-
-**Key points:**
-
-• **China domestic price**: 16,300–16,400 yuan/ton (July 8–11, 2025)
-• **FOB China international price**: $2,250–$2,330/ton
-• **Recent trend**: Prices have stabilized after a recent uptick, with the market in a wait-and-see mode due to weak supply and demand
-
-If you need magnesium prices in a different region or for a specific product form (such as alloys or high-purity magnesium), please specify.`
-              }],
-              sources: [
-                { 
-                  id: '1', 
-                  title: 'Global Metals Market Report - July 2025', 
-                  content: 'Comprehensive analysis of global metals markets including magnesium pricing data and trends.',
-                  url: 'https://example.com/metals-report-2025'
-                },
-                { 
-                  id: '2', 
-                  title: 'China Magnesium Market Analysis', 
-                  content: 'Detailed breakdown of domestic and export pricing for magnesium products in the Chinese market.',
-                  url: 'https://example.com/china-magnesium-2025'
-                },
-                { 
-                  id: '3', 
-                  title: 'Magnesium Price Trends Q3 2025', 
-                  content: 'Analysis of recent price movements and forecasts for magnesium markets globally.',
-                  url: 'https://example.com/mg-trends-q3-2025'
-                },
-              ],
-              isLoading: false
-            }
-          : thread
-      ));
-    }, 1500);
+              messages: updatedMessages,
+              relatedMaterials:
+                data.relatedMaterials ?? data.related_materials ?? [],
+              sources: data.sources ?? [],
+              suggestedQuestions: data.suggestedQuestions ?? [],
+              isLoading: false,
+            };
+          })
+        );
+      })
+      .catch((err) => {
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('Webhook fetch error:', err);
+        }
+        setThreads((prev) =>
+          prev.map((thread) => {
+            if (thread.id !== threadId) return thread;
+            const updatedMessages = [...thread.messages];
+            updatedMessages[updatedMessages.length - 1] = {
+              role: 'assistant',
+              content: `Error: ${err.message}`,
+            };
+            return { ...thread, messages: updatedMessages, isLoading: false };
+          })
+        );
+      });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -270,7 +327,7 @@ If you need magnesium prices in a different region or for a specific product for
                       <h2 className="text-sm font-medium text-muted-foreground mb-3">Related Materials</h2>
                       <div className="grid grid-flow-col auto-cols-[240px] gap-4 overflow-x-auto pb-2">
                         {thread.relatedMaterials.map((material) => (
-                          <RelatedMaterialsCard key={material.id} material={material} />
+                          <RelatedMaterialsCard key={material.uuid} material={material} />
                         ))}
                       </div>
                     </div>

@@ -3,11 +3,11 @@
 import Link from 'next/link';
 
 interface Material {
-  id: number;
+  uuid: string;
   name: string;
-  description: string;
+  short_summary: string;
   symbol?: string; // e.g. "Mg"
-  color?: string;  // hex or tailwind color string
+  material_card_color?: string; // hex string
 }
 
 interface RelatedMaterialsCardProps {
@@ -22,7 +22,7 @@ export function RelatedMaterialsCard({ material }: RelatedMaterialsCardProps) {
         {/* Element-like square */}
         <div
           className="w-12 h-12 flex items-center justify-center rounded-md text-white text-lg font-semibold flex-shrink-0"
-          style={{ backgroundColor: material.color ?? '#6b7280' /* default gray-500 */ }}
+          style={{ backgroundColor: material.material_card_color ?? '#6b7280' /* default gray-500 */ }}
         >
           {symbol}
         </div>
@@ -30,7 +30,7 @@ export function RelatedMaterialsCard({ material }: RelatedMaterialsCardProps) {
         {/* Name & description */}
         <div className="flex-1 min-w-0">
           <h3 className="font-medium text-foreground text-sm leading-tight truncate">{material.name}</h3>
-          <p className="text-xs text-muted-foreground overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{material.description}</p>
+          <p className="text-xs text-muted-foreground overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{material.short_summary}</p>
         </div>
       </div>
     </Link>
