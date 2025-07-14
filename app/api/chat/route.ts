@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { getSystemPrompt } from './prompt.config';
 import { createClient } from '@supabase/supabase-js';
 import z from 'zod';
 
@@ -34,9 +35,26 @@ type PineconeDocument = {
   metadata?: {
     title?: string;
     text?: string;
-    [key: string]: any;
+    url?: string;
+    [key: string]: unknown;
   };
   text?: string;
+};
+
+type PineconeHit = {
+  _id: string;
+  _score: number;
+  fields: {
+    text?: string;
+    filename?: string;
+    documentType?: string;
+    enhanced_doc_type?: string;
+    detectedMaterials?: string[];
+    detected_materials?: string[];
+    geographic_focus?: string;
+    title?: string;
+    url?: string;
+  };
 };
 
 // ----- Database helpers -----
@@ -87,14 +105,21 @@ const getSessionMessages = async (sessionId: string): Promise<ConversationMessag
   return messages as ConversationMessage[];
 };
 
-const saveMessage = async (sessionId: string, role: 'user' | 'assistant', content: string): Promise<void> => {
+const saveMessage = async (
+  sessionId: string, 
+  role: 'user' | 'assistant', 
+  content: string, 
+  materials?: MaterialData[], 
+  suggestions?: string[]
+) => {
   const { error } = await supabase
     .from('messages')
     .insert({
       session_id: sessionId,
       role,
       content,
-      metadata: { timestamp: new Date().toISOString() }
+      related_materials: materials,
+      suggested_questions: suggestions
     });
   
   if (error) {
@@ -102,6 +127,18 @@ const saveMessage = async (sessionId: string, role: 'user' | 'assistant', conten
     throw new Error('Failed to save message');
   }
 };
+
+
+// ----- Types -----
+// ... (existing types)
+
+type Source = {
+  title: string;
+  url: string;
+  text: string;
+};
+
+
 
 // ----- Pinecone search function -----
 const searchPineconeDocuments = async (query: string): Promise<PineconeDocument[]> => {
@@ -135,17 +172,13 @@ const searchPineconeDocuments = async (query: string): Promise<PineconeDocument[
     // Transform response to match our PineconeDocument type
     // Handle inference API response format with result.hits
     const hits = data.result?.hits || [];
-    return hits.map((hit: any) => ({
+    return hits.map((hit: PineconeHit) => ({
       id: hit._id,
       score: hit._score || 0,
       metadata: {
-        text: hit.fields?.text || '',
-        title: hit.fields?.filename || hit.fields?.title || '',
-        documentType: hit.fields?.documentType || hit.fields?.enhanced_doc_type || '',
-        detectedMaterials: hit.fields?.detectedMaterials || hit.fields?.detected_materials || [],
-        geographic_focus: hit.fields?.geographic_focus || []
+        ...hit.fields
       },
-      content: hit.fields?.text || ''
+      text: hit.fields?.text || ''
     }));
   } catch (error) {
     console.error('Pinecone search error:', error);
@@ -160,67 +193,55 @@ const RequestSchema = z.object({
 });
 
 // ----- Helper functions -----
-async function extractMaterialsFromResponse(responseText: string) {
-  const commonMaterials = [
-    'lithium', 'cobalt', 'nickel', 'copper', 'aluminum', 'magnesium', 'zinc', 'tin', 'lead',
-    'rare earth', 'neodymium', 'dysprosium', 'terbium', 'europium', 'yttrium', 'cerium',
-    'graphite', 'silicon', 'manganese', 'titanium', 'vanadium', 'chromium', 'molybdenum',
-    'tungsten', 'tantalum', 'niobium', 'gallium', 'germanium', 'indium', 'tellurium',
-    'palladium', 'platinum', 'rhodium', 'iridium', 'osmium', 'ruthenium'
-  ];
-  
-  const responseTextLower = responseText.toLowerCase();
-  const mentionedMaterials = commonMaterials.filter(material => 
-    responseTextLower.includes(material) || responseTextLower.includes(material.replace(' ', ''))
-  );
-  
-  if (mentionedMaterials.length === 0) return [];
-  
-  try {
-    const { data: materials } = await supabase
-      .from('materials')
-      .select('material, short_summary, supply_chain_summary')
-      .or(
-        mentionedMaterials.map(m => `material.ilike.%${m}%`).join(',')
-      )
-      .limit(10);
-    
-    return materials || [];
-  } catch (error) {
-    console.error('Error fetching materials:', error);
+async function extractMaterialsFromResponse(responseText: string): Promise<MaterialData[]> {
+  const materialsSectionMatch = responseText.match(/####(?:\*\*)? Extracted Material Name(?:\*\*)?\s*\n([\s\S]*?)(?:\n---|$|###)/);
+  if (!materialsSectionMatch || !materialsSectionMatch[1]) {
     return [];
   }
-}
 
-function extractSuggestionsFromResponse(responseText: string): string[] {
-  const lines = responseText.split('\n');
-  const suggestions: string[] = [];
-  
-  let inSuggestionsSection = false;
-  for (const line of lines) {
-    const trimmed = line.trim();
-    
-    if (trimmed.toLowerCase().includes('follow-up') || 
-        trimmed.toLowerCase().includes('questions') ||
-        trimmed.toLowerCase().includes('suggestions')) {
-      inSuggestionsSection = true;
-      continue;
-    }
-    
-    if (inSuggestionsSection) {
-      if (trimmed.match(/^\d+\.|^-|^\*/) && trimmed.length > 10) {
-        const cleaned = trimmed.replace(/^\d+\.|^-|^\*/, '').trim();
-        if (cleaned.endsWith('?')) {
-          suggestions.push(cleaned);
-        }
-      }
-      
-      if (suggestions.length >= 3) break;
-    }
+  const materialsSection = materialsSectionMatch[1];
+  const materialNames: string[] = [];
+  const materialRegex = /-\s*\*\*(.*?)\*\*/g;
+  let match;
+  while ((match = materialRegex.exec(materialsSection)) !== null) {
+    materialNames.push(match[1].trim());
   }
-  
+
+  if (materialNames.length === 0) {
+    return [];
+  }
+
+  console.log('Extracted material names:', materialNames);
+
+  const { data: materials, error } = await supabase
+    .from('materials')
+    .select('*')
+    .in('material', materialNames);
+
+  if (error) {
+    console.error('Error fetching materials from DB:', error);
+    return [];
+  }
+
+  return materials || [];
+};
+
+const extractSuggestionsFromResponse = (responseText: string): string[] => {
+  const suggestionsSectionMatch = responseText.match(/###(?:\*\*)? Follow-up Questions(?:\*\*)?\s*\n([\s\S]*)/);
+  if (!suggestionsSectionMatch || !suggestionsSectionMatch[1]) {
+    return [];
+  }
+
+  const suggestionsSection = suggestionsSectionMatch[1];
+  const suggestions: string[] = [];
+  const suggestionRegex = /^\d+\.\s*(.*)$/gm;
+  let match;
+  while ((match = suggestionRegex.exec(suggestionsSection)) !== null) {
+    suggestions.push(match[1].trim());
+  }
+
   return suggestions.slice(0, 3);
-}
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -275,35 +296,7 @@ export async function POST(request: NextRequest) {
     // System prompt for ELLEN with context
     const systemPrompt = {
       role: 'system' as const,
-      content: `You are ELLEN (Enhanced Learning and Logistics Expert Network), a specialized AI assistant focused on critical materials, supply chains, and geopolitical analysis.
-
-Available Tools:
-- **Web Search**: Access real-time information, current events, recent developments, and breaking news
-
-Context Sources:
-- Critical materials database with supply chain data and geopolitical context
-- Vector embeddings of documents, research papers, and reports
-- Real-time web information and current events${contextPrompt}
-
-Instructions:
-1. Provide comprehensive, analytical responses about critical materials and supply chains
-2. Use web search for current events, recent developments, and real-time market information
-3. Leverage the provided materials database context for specific material properties and supply chain data
-4. Reference research documents and papers from the vector database for technical insights
-5. Combine insights from all available sources (database, research, and real-time web) for comprehensive analysis
-6. Use specific data, statistics, and examples when available
-7. Highlight geopolitical risks and supply chain vulnerabilities
-8. Suggest alternatives and mitigation strategies when relevant
-9. Be explicit about material names (e.g., "palladium" not "Pd")
-10. Include relevant sources and citations when available
-11. Always provide 3 relevant follow-up questions at the end
-
-Workflow:
-1. Query relevant databases and search for context
-2. Analyze the information from multiple sources
-3. Provide comprehensive response with citations
-4. Extract and highlight mentioned materials
-5. Generate contextual follow-up questions`
+      content: getSystemPrompt(contextPrompt)
     };
     
     // Combine system prompt with conversation history
@@ -315,6 +308,14 @@ Workflow:
         const encoder = new TextEncoder();
         
         try {
+          // Log the full input being sent to OpenAI
+          console.log('=== OpenAI API Request ===');
+          console.log('Model:', 'gpt-4.1');
+          console.log('Session ID:', sessionId);
+          console.log('Input length:', fullInput.length);
+          console.log('Full input:', fullInput);
+          console.log('========================');
+
           // Use Responses API with enhanced MCP tools and web search
           const response = await openai.responses.create({
             model: 'gpt-4.1',
@@ -331,7 +332,10 @@ Workflow:
           let fullResponse = '';
 
           // Stream the response
+          console.log('=== OpenAI API Response Stream Started ===');
           for await (const chunk of response) {
+            console.log('Chunk type:', chunk.type, 'Data:', JSON.stringify(chunk, null, 2));
+            
             if (chunk.type === 'response.output_text.delta') {
               const content = chunk.delta || '';
               if (content) {
@@ -374,13 +378,21 @@ Workflow:
                 })}\n\n`)
               );
             } else if (chunk.type === 'response.completed') {
-              console.log('Response complete');
+              console.log('=== Response Complete ===');
+              console.log('Full response length:', fullResponse.length);
+              console.log('Full response content:', fullResponse);
+              console.log('========================');
               
-              // Save assistant response to database
-              await saveMessage(sessionId, 'assistant', fullResponse);
-              
-              // Extract materials from the full response
+              // Extract materials and suggestions from the full response
               const materials = await extractMaterialsFromResponse(fullResponse);
+              const suggestions = extractSuggestionsFromResponse(fullResponse);
+
+              // Save assistant response to database with metadata
+              await saveMessage(sessionId, 'assistant', fullResponse, materials, suggestions);
+              
+              // Stream materials to the frontend
+              console.log('=== Streaming Materials ===');
+              console.log('Extracted materials:', materials);
               if (materials.length > 0) {
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ 
@@ -390,8 +402,9 @@ Workflow:
                 );
               }
               
-              // Extract suggestions
-              const suggestions = extractSuggestionsFromResponse(fullResponse);
+              // Stream suggestions to the frontend
+              console.log('=== Streaming Suggestions ===');
+              console.log('Extracted suggestions:', suggestions);
               if (suggestions.length > 0) {
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ 
@@ -400,6 +413,24 @@ Workflow:
                   })}\n\n`)
                 );
               }
+              
+              // Stream sources (Pinecone search results)
+              if (pineconeContext.length > 0) {
+                const sources: Source[] = pineconeContext.map((doc: PineconeDocument) => ({
+                  title: doc.metadata?.title || 'Document',
+                  url: doc.metadata?.url || '',
+                  text: doc.metadata?.text || doc.text || ''
+                }));
+                
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ 
+                    type: 'sources', 
+                    content: sources 
+                  })}\n\n`)
+                );
+              }
+              
+              // The metadata is now saved with the message, so no further action is needed here.
             }
           }
           

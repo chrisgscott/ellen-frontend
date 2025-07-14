@@ -10,8 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { RelatedMaterialsCard } from '@/components/related-materials-card';
-import { Search, Send, ArrowRight, ExternalLink } from 'lucide-react';
+import { Search, Send, ExternalLink } from 'lucide-react';
 
 // Endpoint for new in-house streaming chat API
 const API_URL = '/api/chat';
@@ -25,24 +24,37 @@ const LOADING_MESSAGES = [
 ];
 
 interface Material {
-  uuid: string;
-  name: string;
-  short_summary: string;
-  symbol?: string;
+  material: string;
+  supply_score: number;
+  ownership_score: number;
   material_card_color?: string;
 }
 
-interface ConversationThread {
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+  related_materials?: Material[];
+  suggested_questions?: string[];
+}
+
+interface ChatSession {
   id: string;
-  query: string;
-  messages: Array<{role: 'user' | 'assistant', content: string}>;
-  relatedMaterials: Material[];
-  sources: Array<{id: string, title: string, content: string, url?: string}>;
-  suggestedQuestions: string[];
+  messages: Message[];
+  sources: Source[];
   isLoading: boolean;
 }
 
+interface SSEPayload {
+  type: 'token' | 'materials' | 'sources' | 'suggestions';
+  content: string | Material[] | Source[] | string[];
+}
 
+interface Source {
+  id: string;
+  title: string;
+  content: string;
+  url?: string;
+}
 
 interface ChatMessageProps {
   message: {
@@ -152,59 +164,85 @@ function SourcesList({ sources }: SourcesListProps) {
 }
 
 
-
-
-
 export default function ChatPage() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
-  
-  const [threads, setThreads] = useState<ConversationThread[]>([]);
+  const sessionIdFromUrl = searchParams.get('session') || '';
+  const [session, setSession] = useState<ChatSession | null>(null);
   const [newQuery, setNewQuery] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-
-  // Initialize with the query from URL (run only once per mount)
-  const initializedRef = useRef(false);
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (!initializedRef.current && initialQuery) {
-      initializedRef.current = true;
-      createNewThread(initialQuery);
-    }
-  }, [initialQuery]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [session]);
 
-  const createNewThread = (queryText: string) => {
-    // Use a UUID instead of Date.now() to guarantee uniqueness even if
-    // createNewThread is invoked twice in the same millisecond (e.g. in
-    // React StrictMode development double render).
-    const threadId =
+  // Initialize session - either from URL or create new one
+  useEffect(() => {
+    if (initialQuery && !session) {
+      createNewSession(initialQuery);
+    } else if (sessionIdFromUrl && !session) {
+      loadExistingSession(sessionIdFromUrl);
+    }
+  }, [initialQuery, sessionIdFromUrl, session]);
+
+  // Load existing session from database
+  const loadExistingSession = async (sessionId: string) => {
+    try {
+      const response = await fetch(`/api/chat/${sessionId}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.log('Session not found, showing empty state');
+          return;
+        }
+        throw new Error(`Failed to load session: ${response.status}`);
+      }
+      
+      const sessionData: ChatSession = await response.json();
+      setSession(sessionData);
+      
+      console.log('Loaded session:', sessionData);
+    } catch (error) {
+      console.error('Error loading session:', error);
+      // Show empty state on error
+      setSession(null);
+    }
+  };
+
+  // Create new session with initial query
+  const createNewSession = (queryText: string) => {
+    const sessionId =
       typeof crypto !== 'undefined' && crypto.randomUUID
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const newThread: ConversationThread = {
-      id: threadId,
-      query: queryText,
+    
+    const newSession: ChatSession = {
+      id: sessionId,
       messages: [
         { role: 'user', content: queryText },
         {
           role: 'assistant',
-          content:
-            LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)],
+          content: LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)],
         },
       ],
-      relatedMaterials: [],
       sources: [],
-      suggestedQuestions: [],
       isLoading: true
     };
     
-    setThreads(prev => [...prev, newThread]);
+    setSession(newSession);
+    
+    // Update URL to include session ID
+    const url = new URL(window.location.href);
+    url.searchParams.set('session', sessionId);
+    url.searchParams.delete('q'); // Remove query param since we're now using session
+    window.history.replaceState({}, '', url.toString());
 
     
     // Call in-house chat API (SSE streaming)
     fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: queryText, session_id: threadId }),
+      body: JSON.stringify({ query: queryText, session_id: sessionId }),
     })
       .then(async (res) => {
         if (!res.ok || !res.body) {
@@ -224,51 +262,58 @@ export default function ChatPage() {
             if (!rawLine.startsWith('data:')) continue;
             const jsonStr = rawLine.slice(5).trim();
             if (jsonStr === '[DONE]') {
-              setThreads((prev) =>
-                prev.map((t) =>
-                  t.id === threadId ? { ...t, isLoading: false } : t
-                )
-              );
+              setSession((prev) => prev ? { ...prev, isLoading: false } : null);
               continue;
             }
-            let payload: any;
+            let payload: SSEPayload;
             try {
               payload = JSON.parse(jsonStr);
             } catch {
               continue;
             }
             if (payload.type === 'token') {
-              assistantContent += payload.content;
-              setThreads((prev) =>
-                prev.map((t) => {
-                  if (t.id !== threadId) return t;
-                  const updatedMessages = [...t.messages];
-                  updatedMessages[updatedMessages.length - 1] = {
-                    role: 'assistant',
-                    content: assistantContent,
-                  };
-                  return { ...t, messages: updatedMessages };
-                })
-              );
+              assistantContent += payload.content as string;
+              setSession((prev) => prev ? {
+                ...prev,
+                messages: prev.messages.map((msg, idx) => 
+                  idx === prev.messages.length - 1 && msg.role === 'assistant' 
+                    ? { ...msg, content: assistantContent }
+                    : msg
+                )
+              } : null);
             } else if (payload.type === 'materials') {
               console.log('Received materials:', payload.content);
-              setThreads((prev) =>
-                prev.map((t) => 
-                  t.id === threadId ? { ...t, relatedMaterials: payload.content } : t
-                )
-              );
+              setSession((prev) => {
+                if (!prev) return null;
+                const materials = payload.content as Material[];
+                const lastMsgIndex = prev.messages.length - 1;
+                if (lastMsgIndex < 0) return prev;
+
+                const updatedMessages = [...prev.messages];
+                updatedMessages[lastMsgIndex] = {
+                  ...updatedMessages[lastMsgIndex],
+                  related_materials: materials
+                };
+
+                return { ...prev, messages: updatedMessages };
+              });
             } else if (payload.type === 'sources') {
-              setThreads((prev) =>
-                prev.map((t) => 
-                  t.id === threadId ? { ...t, sources: payload.content } : t
-                )
-              );
+              setSession((prev) => prev ? { ...prev, sources: payload.content as Source[] } : null);
             } else if (payload.type === 'suggestions') {
-              setThreads((prev) =>
-                prev.map((t) => 
-                  t.id === threadId ? { ...t, suggestedQuestions: payload.content } : t
-                )
-              );
+              setSession((prev) => {
+                if (!prev) return null;
+                const suggestions = payload.content as string[];
+                const lastMsgIndex = prev.messages.length - 1;
+                if (lastMsgIndex < 0) return prev;
+
+                const updatedMessages = [...prev.messages];
+                updatedMessages[lastMsgIndex] = {
+                  ...updatedMessages[lastMsgIndex],
+                  suggested_questions: suggestions
+                };
+
+                return { ...prev, messages: updatedMessages };
+              });
             }
           }
         };
@@ -289,46 +334,160 @@ export default function ChatPage() {
         if (process.env.NODE_ENV !== 'production') {
           console.error('Chat API fetch error:', err);
         }
-        setThreads((prev) =>
-          prev.map((thread) => {
-            if (thread.id !== threadId) return thread;
-            const updatedMessages = [...thread.messages];
-            updatedMessages[updatedMessages.length - 1] = {
-              role: 'assistant',
-              content: `Error: ${err.message}`,
-            };
-            return { ...thread, messages: updatedMessages, isLoading: false };
-          })
-        );
+        setSession(prev => prev ? { ...prev, isLoading: false } : null);
+      });
+  };
+
+  // Add message to existing session
+  const addMessageToSession = (queryText: string) => {
+    if (!session) {
+      createNewSession(queryText);
+      return;
+    }
+
+    // Add user message to current session
+    const updatedSession = {
+      ...session,
+      messages: [
+        ...session.messages,
+        { role: 'user' as const, content: queryText },
+        {
+          role: 'assistant' as const,
+          content: LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)],
+        },
+      ],
+      isLoading: true
+    };
+    
+    setSession(updatedSession);
+    
+    // Call API with existing session ID
+    fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: queryText, session_id: session.id }),
+    })
+      .then(async (res) => {
+        if (!res.ok || !res.body) {
+          throw new Error(`Request failed with status ${res.status}`);
+        }
+        // Stream SSE
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let assistantContent = '';
+
+        const processBuffer = () => {
+          let idx;
+          while ((idx = buffer.indexOf('\n\n')) !== -1) {
+            const rawLine = buffer.slice(0, idx).trim();
+            buffer = buffer.slice(idx + 2);
+            if (!rawLine.startsWith('data:')) continue;
+            const jsonStr = rawLine.slice(5).trim();
+            if (jsonStr === '[DONE]') {
+              setSession(prev => prev ? { ...prev, isLoading: false } : null);
+              continue;
+            }
+            let payload: SSEPayload;
+            try {
+              payload = JSON.parse(jsonStr);
+            } catch {
+              continue;
+            }
+            if (payload.type === 'token') {
+              assistantContent += payload.content;
+              setSession(prev => prev ? {
+                ...prev,
+                messages: prev.messages.map((msg, idx) => 
+                  idx === prev.messages.length - 1 && msg.role === 'assistant' 
+                    ? { ...msg, content: assistantContent }
+                    : msg
+                )
+              } : null);
+            } else if (payload.type === 'materials') {
+              console.log('Received materials:', payload.content);
+              setSession((prev) => {
+                if (!prev) return null;
+                const materials = payload.content as Material[];
+                const lastMsgIndex = prev.messages.length - 1;
+                if (lastMsgIndex < 0) return prev;
+
+                const updatedMessages = [...prev.messages];
+                updatedMessages[lastMsgIndex] = {
+                  ...updatedMessages[lastMsgIndex],
+                  related_materials: materials
+                };
+
+                return { ...prev, messages: updatedMessages };
+              });
+            } else if (payload.type === 'sources') {
+              setSession(prev => prev ? { ...prev, sources: payload.content as Source[] } : null);
+            } else if (payload.type === 'suggestions') {
+              setSession((prev) => {
+                if (!prev) return null;
+                const suggestions = payload.content as string[];
+                const lastMsgIndex = prev.messages.length - 1;
+                if (lastMsgIndex < 0) return prev;
+
+                const updatedMessages = [...prev.messages];
+                updatedMessages[lastMsgIndex] = {
+                  ...updatedMessages[lastMsgIndex],
+                  suggested_questions: suggestions
+                };
+
+                return { ...prev, messages: updatedMessages };
+              });
+            }
+          }
+        };
+
+        const pump = async (): Promise<void> => {
+          const { done, value } = await reader.read();
+          if (done) {
+            processBuffer();
+            return;
+          }
+          buffer += decoder.decode(value, { stream: true });
+          processBuffer();
+          await pump();
+        };
+
+        await pump();
+      })
+      .catch((error) => {
+        console.error('Chat API error:', error);
+        setSession(prev => prev ? { ...prev, isLoading: false } : null);
       });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newQuery.trim()) {
-      createNewThread(newQuery);
+      addMessageToSession(newQuery);
       setNewQuery('');
     }
   };
 
-  const handleSuggestedQuestion = (question: string) => {
-    createNewThread(question);
+  const handleFollowUp = (question: string) => {
+    addMessageToSession(question);
   };
 
 
 
   return (
     <div className="flex flex-col h-screen">
-      {/* Main Content - Multiple Conversation Threads */}
+      {/* Main Content - Single Session */}
       <div className="flex-1 overflow-auto pb-24">
-        {threads.map((thread) => (
-          <div key={thread.id} className="mb-8">
-            {/* Sticky Thread Header */}
-            <header className="sticky top-0 z-10 bg-background p-4 relative">
+        {session && (
+          <div className="mb-8">
+            {/* Sticky Session Header */}
+            <header className="sticky top-0 z-10 bg-background p-4">
               {/* Header fade overlay */}
               <div className="absolute -bottom-4 left-0 right-0 h-4 bg-gradient-to-b from-background to-transparent pointer-events-none"></div>
               <div className="max-w-4xl mx-auto border-b border-border pb-4">
-                <h1 className="text-2xl font-medium">{thread.query}</h1>
+                <h1 className="text-2xl font-medium">
+                  {session.messages.find(m => m.role === 'user')?.content || 'Chat Session'}
+                </h1>
                 
                 {/* Tabs */}
                 <Tabs defaultValue="answer" className="mt-4">
@@ -340,75 +499,71 @@ export default function ChatPage() {
               </div>
             </header>
             
-            {/* Thread Content */}
+            {/* Session Content */}
             <Tabs defaultValue="answer" className="w-full">
               <TabsContent value="answer" className="mt-0 p-0">
                 <div className="max-w-4xl mx-auto p-4">
                   {/* Related Materials Cards */}
-                  {(() => {
-                    console.log('Thread related materials:', thread.relatedMaterials);
-                    return null;
-                  })()}
-                  {thread.relatedMaterials.length > 0 && (
-                    <div className="mb-6">
-                      <h2 className="text-sm font-medium text-muted-foreground mb-3">Related Materials</h2>
-                      <div className="grid grid-flow-col auto-cols-[240px] gap-4 overflow-x-auto pb-2">
-                        {thread.relatedMaterials.map((material) => (
-                          <RelatedMaterialsCard key={material.uuid} material={material} />
-                        ))}
-                      </div>
+                  {session && session.messages.length > 0 && session.messages[session.messages.length - 1].role === 'assistant' && (
+          <>
+            {session.messages[session.messages.length - 1].related_materials && session.messages[session.messages.length - 1].related_materials!.length > 0 && (
+              <div className="mt-4">
+                <h3 className="text-lg font-semibold mb-2">Related Materials</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {session.messages[session.messages.length - 1].related_materials!.map((material, index) => (
+                    <div key={index} className="border rounded-lg p-4" style={{ borderColor: material.material_card_color || '#e0e0e0' }}>
+                      <h4 className="font-bold text-md">{material.material}</h4>
+                      <p className="text-sm text-gray-600">Supply Score: {material.supply_score}</p>
+                      <p className="text-sm text-gray-600">Ownership Score: {material.ownership_score}</p>
                     </div>
-                  )}
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {session.messages[session.messages.length - 1].suggested_questions && session.messages[session.messages.length - 1].suggested_questions!.length > 0 && (
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold mb-2">Suggested Questions</h3>
+                <div className="flex flex-wrap gap-2">
+                  {session.messages[session.messages.length - 1].suggested_questions!.map((question, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleFollowUp(question)}
+                      className="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg text-sm hover:bg-gray-200 transition-colors"
+                    >
+                      {question}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
                   
-                  {/* Chat Messages - Only show assistant responses */}
+                  {/* Chat Messages - Show all messages */}
                   <div className="space-y-6">
-                    {thread.messages
-                      .filter(message => message.role === 'assistant')
-                      .map((message, index) => (
-                        <ChatMessage 
-                          key={index} 
-                          message={message} 
-                          isLoading={thread.isLoading && index === thread.messages.filter(m => m.role === 'assistant').length - 1} 
-                        />
-                      ))}
+                    {session.messages.map((message: {role: 'user' | 'assistant', content: string}, index: number) => (
+                      <ChatMessage 
+                        key={index} 
+                        message={message} 
+                        isLoading={session.isLoading && index === session.messages.length - 1 && message.role === 'assistant'} 
+                      />
+                    ))}
                   </div>
-                  
-                  {/* Suggested Questions */}
-                  {!thread.isLoading && 
-                   thread.messages.length > 0 && 
-                   thread.messages[thread.messages.length - 1].role === 'assistant' && (
-                    <div className="mt-8">
-                      <h3 className="text-sm font-medium text-muted-foreground mb-3">Related Questions</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {thread.suggestedQuestions.map((question, index) => (
-                          <Button 
-                            key={index} 
-                            variant="outline" 
-                            size="sm" 
-                            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
-                            onClick={() => handleSuggestedQuestion(question)}
-                          >
-                            {question}
-                            <ArrowRight className="h-3 w-3" />
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </TabsContent>
               
               <TabsContent value="sources" className="mt-0 p-0">
                 <div className="max-w-4xl mx-auto p-4">
-                  <SourcesList sources={thread.sources} />
+                  <SourcesList sources={session.sources} />
                 </div>
               </TabsContent>
             </Tabs>
           </div>
-        ))}
+        )}
         
         {/* Empty state */}
-        {threads.length === 0 && (
+        {!session && (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <h2 className="text-xl font-medium mb-2">Start a conversation</h2>
@@ -416,21 +571,22 @@ export default function ChatPage() {
             </div>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
       
       {/* Chat Input */}
-      <div className="sticky bottom-0 bg-background relative z-50">
+      <div className="sticky bottom-0 bg-background z-50">
         {/* Fade overlay */}
         <div className="absolute -top-20 left-0 right-0 h-20 bg-gradient-to-t from-background to-transparent pointer-events-none"></div>
         <div className="max-w-4xl mx-auto p-4">
           <form onSubmit={handleSubmit} className="relative">
             <Input
               type="text"
-              placeholder="Ask a follow-up question..."
+              placeholder={session ? "Ask a follow-up question..." : "Ask a question to get started..."}
               className="pl-10 pr-16 py-6 text-base rounded-full border border-input bg-background shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
               value={newQuery}
               onChange={(e) => setNewQuery(e.target.value)}
-              disabled={threads.some(thread => thread.isLoading)}
+              disabled={session?.isLoading}
             />
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
             <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
@@ -438,7 +594,7 @@ export default function ChatPage() {
                 type="submit" 
                 size="sm" 
                 className="h-8 rounded-full"
-                disabled={!newQuery.trim() || threads.some(thread => thread.isLoading)}
+                disabled={!newQuery.trim() || session?.isLoading}
               >
                 <Send className="h-4 w-4" />
               </Button>
