@@ -5,12 +5,28 @@ import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { createClient } from '@/lib/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search, Send, ExternalLink } from 'lucide-react';
+
+// Initialize Supabase client
+const supabase = createClient();
+
+// Function to get authentication headers
+const getAuthHeaders = async () => {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    throw error;
+  }
+  const token = data.session?.access_token;
+  return {
+    Authorization: `Bearer ${token}`,
+  };
+};
 
 // Endpoint for new in-house streaming chat API
 const API_URL = '/api/chat';
@@ -177,8 +193,17 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [session]);
 
+  // Track if we're updating the URL ourselves to prevent duplicate session creation
+  const isUpdatingUrl = useRef(false);
+
   // Initialize session - either from URL or create new one
   useEffect(() => {
+    // Skip effect if we're the ones updating the URL
+    if (isUpdatingUrl.current) {
+      isUpdatingUrl.current = false;
+      return;
+    }
+
     if (initialQuery && !session) {
       createNewSession(initialQuery);
     } else if (sessionIdFromUrl && !session) {
@@ -231,6 +256,9 @@ export default function ChatPage() {
     
     setSession(newSession);
     
+    // Set flag to prevent duplicate session creation from URL change
+    isUpdatingUrl.current = true;
+    
     // Update URL to include session ID
     const url = new URL(window.location.href);
     url.searchParams.set('session', sessionId);
@@ -239,11 +267,28 @@ export default function ChatPage() {
 
     
     // Call in-house chat API (SSE streaming)
-    fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: queryText, session_id: sessionId }),
-    })
+    const makeRequest = async () => {
+      try {
+        const authHeaders = await getAuthHeaders();
+        return fetch(API_URL, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            ...authHeaders
+          },
+          body: JSON.stringify({ query: queryText, session_id: sessionId }),
+        });
+      } catch (error) {
+        console.warn('Failed to get auth headers, proceeding without authentication:', error);
+        return fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: queryText, session_id: sessionId }),
+        });
+      }
+    };
+    
+    makeRequest()
       .then(async (res) => {
         if (!res.ok || !res.body) {
           throw new Error(`Request failed with status ${res.status}`);
@@ -362,11 +407,28 @@ export default function ChatPage() {
     setSession(updatedSession);
     
     // Call API with existing session ID
-    fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: queryText, session_id: session.id }),
-    })
+    const makeFollowUpRequest = async () => {
+      try {
+        const authHeaders = await getAuthHeaders();
+        return fetch(API_URL, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            ...authHeaders
+          },
+          body: JSON.stringify({ query: queryText, session_id: session.id }),
+        });
+      } catch (error) {
+        console.warn('Failed to get auth headers, proceeding without authentication:', error);
+        return fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: queryText, session_id: session.id }),
+        });
+      }
+    };
+    
+    makeFollowUpRequest()
       .then(async (res) => {
         if (!res.ok || !res.body) {
           throw new Error(`Request failed with status ${res.status}`);

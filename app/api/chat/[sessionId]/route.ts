@@ -26,10 +26,10 @@ export async function GET(
 
     const session = sessions[0];
 
-    // Get all messages for this session, including new metadata fields
+    // Get all messages for this session, including all metadata fields
     const { data: messages, error: messagesError } = await supabase
       .from('messages')
-      .select('*, related_materials, suggested_questions')
+      .select('*, related_materials, suggested_questions, sources')
       .eq('session_id', sessionId)
       .order('created_at', { ascending: true });
 
@@ -43,16 +43,18 @@ export async function GET(
       role: msg.role as 'user' | 'assistant',
       content: msg.content,
       related_materials: msg.related_materials || [],
-      suggested_questions: msg.suggested_questions || []
+      suggested_questions: msg.suggested_questions || [],
+      sources: msg.sources || []
     }));
 
-    // Sources are still stored at the session level for now
-    const sources = session.metadata?.sources || [];
+    // We've moved sources to the message level, but keep session-level sources for backward compatibility
+    const sessionLevelSources = session.metadata?.sources || [];
 
     const sessionData = {
       id: session.id,
       messages: formattedMessages,
-      sources: sources,
+      // For backward compatibility, include session-level sources
+      sources: sessionLevelSources,
       isLoading: false
     };
 
