@@ -29,7 +29,7 @@ export async function GET(
     // Get all messages for this session, including all metadata fields
     const { data: messages, error: messagesError } = await supabase
       .from('messages')
-      .select('*, related_materials, suggested_questions, sources')
+      .select('*')
       .eq('session_id', sessionId)
       .order('created_at', { ascending: true });
 

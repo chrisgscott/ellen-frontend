@@ -613,14 +613,6 @@ export default function ChatPage() {
                       {/* Thread Content */}
                       <div className="max-w-4xl mx-auto p-4">
                         <div className="space-y-6">
-                          {/* User Message */}
-                          {thread.userMessage && (
-                            <ChatMessage 
-                              message={thread.userMessage} 
-                              isLoading={false}
-                            />
-                          )}
-                          
                           {/* Assistant Message */}
                           {thread.assistantMessage && (
                             <div>
