@@ -1,0 +1,583 @@
+{
+  "sessionId": "dc0aa6f9-c7a9-4751-b1e0-8e143a4f7cca",
+  "timestamp": "2025-07-15T00:03:36.775Z",
+  "totalChunks": 1377,
+  "chunks": [
+    {
+      "index": 1,
+      "type": "response.created",
+      "fullChunk": {
+        "type": "response.created",
+        "sequence_number": 0,
+        "response": {
+          "id": "resp_68759ab2188481a183739a1b7f846757035bc8b3aaa84728",
+          "object": "response",
+          "created_at": 1752537778,
+          "status": "in_progress",
+          "background": false,
+          "error": null,
+          "incomplete_details": null,
+          "instructions": null,
+          "max_output_tokens": null,
+          "max_tool_calls": null,
+          "model": "gpt-4.1-2025-04-14",
+          "output": [],
+          "parallel_tool_calls": true,
+          "previous_response_id": null,
+          "reasoning": {
+            "effort": null,
+            "summary": null
+          },
+          "service_tier": "auto",
+          "store": true,
+          "temperature": 1,
+          "text": {
+            "format": {
+              "type": "text"
+            }
+          },
+          "tool_choice": "auto",
+          "tools": [
+            {
+              "type": "function",
+              "description": "Extract metadata from the response including sources, related materials, and suggested questions",
+              "name": "extract_metadata",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "sources": {
+                    "type": "array",
+                    "description": "List of sources referenced in the response",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string",
+                          "description": "Title of the source"
+                        },
+                        "url": {
+                          "type": "string",
+                          "description": "URL of the source"
+                        },
+                        "snippet": {
+                          "type": "string",
+                          "description": "Snippet or description of the source"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "url",
+                        "snippet"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "related_materials": {
+                    "type": "array",
+                    "description": "List of related materials mentioned in the response",
+                    "items": {
+                      "type": "string",
+                      "description": "Name of the material"
+                    }
+                  },
+                  "suggested_questions": {
+                    "type": "array",
+                    "description": "List of follow-up questions suggested based on the response",
+                    "items": {
+                      "type": "string",
+                      "description": "A follow-up question"
+                    }
+                  }
+                },
+                "required": [
+                  "sources",
+                  "related_materials",
+                  "suggested_questions"
+                ],
+                "additionalProperties": false
+              },
+              "strict": true
+            },
+            {
+              "type": "web_search_preview",
+              "search_context_size": "medium",
+              "user_location": {
+                "type": "approximate",
+                "city": null,
+                "country": "US",
+                "region": null,
+                "timezone": null
+              }
+            }
+          ],
+          "top_logprobs": 0,
+          "top_p": 1,
+          "truncation": "disabled",
+          "usage": null,
+          "user": null,
+          "metadata": {}
+        }
+      }
+    },
+    {
+      "index": 2,
+      "type": "response.in_progress",
+      "fullChunk": {
+        "type": "response.in_progress",
+        "sequence_number": 1,
+        "response": {
+          "id": "resp_68759ab2188481a183739a1b7f846757035bc8b3aaa84728",
+          "object": "response",
+          "created_at": 1752537778,
+          "status": "in_progress",
+          "background": false,
+          "error": null,
+          "incomplete_details": null,
+          "instructions": null,
+          "max_output_tokens": null,
+          "max_tool_calls": null,
+          "model": "gpt-4.1-2025-04-14",
+          "output": [],
+          "parallel_tool_calls": true,
+          "previous_response_id": null,
+          "reasoning": {
+            "effort": null,
+            "summary": null
+          },
+          "service_tier": "auto",
+          "store": true,
+          "temperature": 1,
+          "text": {
+            "format": {
+              "type": "text"
+            }
+          },
+          "tool_choice": "auto",
+          "tools": [
+            {
+              "type": "function",
+              "description": "Extract metadata from the response including sources, related materials, and suggested questions",
+              "name": "extract_metadata",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "sources": {
+                    "type": "array",
+                    "description": "List of sources referenced in the response",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string",
+                          "description": "Title of the source"
+                        },
+                        "url": {
+                          "type": "string",
+                          "description": "URL of the source"
+                        },
+                        "snippet": {
+                          "type": "string",
+                          "description": "Snippet or description of the source"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "url",
+                        "snippet"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "related_materials": {
+                    "type": "array",
+                    "description": "List of related materials mentioned in the response",
+                    "items": {
+                      "type": "string",
+                      "description": "Name of the material"
+                    }
+                  },
+                  "suggested_questions": {
+                    "type": "array",
+                    "description": "List of follow-up questions suggested based on the response",
+                    "items": {
+                      "type": "string",
+                      "description": "A follow-up question"
+                    }
+                  }
+                },
+                "required": [
+                  "sources",
+                  "related_materials",
+                  "suggested_questions"
+                ],
+                "additionalProperties": false
+              },
+              "strict": true
+            },
+            {
+              "type": "web_search_preview",
+              "search_context_size": "medium",
+              "user_location": {
+                "type": "approximate",
+                "city": null,
+                "country": "US",
+                "region": null,
+                "timezone": null
+              }
+            }
+          ],
+          "top_logprobs": 0,
+          "top_p": 1,
+          "truncation": "disabled",
+          "usage": null,
+          "user": null,
+          "metadata": {}
+        }
+      }
+    },
+    {
+      "index": 3,
+      "type": "response.output_item.added",
+      "fullChunk": {
+        "type": "response.output_item.added",
+        "sequence_number": 2,
+        "output_index": 0,
+        "item": {
+          "id": "msg_68759ab3b5d481a1aa0ac0cf0e581f9f035bc8b3aaa84728",
+          "type": "message",
+          "status": "in_progress",
+          "content": [],
+          "role": "assistant"
+        }
+      }
+    },
+    {
+      "index": 4,
+      "type": "response.content_part.added",
+      "fullChunk": {
+        "type": "response.content_part.added",
+        "sequence_number": 3,
+        "item_id": "msg_68759ab3b5d481a1aa0ac0cf0e581f9f035bc8b3aaa84728",
+        "output_index": 0,
+        "content_index": 0,
+        "part": {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": ""
+        }
+      }
+    },  // TRUNCATED for brevity
+    {
+      "index": 1081,
+      "type": "response.output_text.done",
+      "fullChunk": {
+        "type": "response.output_text.done",
+        "sequence_number": 1080,
+        "item_id": "msg_68759ab3b5d481a1aa0ac0cf0e581f9f035bc8b3aaa84728",
+        "output_index": 0,
+        "content_index": 0,
+        "text": "To secure an additional 3,000 metric tons of high-purity aluminum from sources in the United States or allied countries—while strictly avoiding suppliers with ties to the People’s Republic of China (PRC) or Russia—it is essential to focus on the major primary producers within allied nations that maintain transparent supply chains. This comes amid heightened geopolitical scrutiny and recent sanctions on Russian and Chinese aluminum, increased U.S. tariffs, and efforts to “friend-shore” critical material supply chains.\n\n### Key Allied Aluminum Producers & Approaches\n\n#### 1. **United States**\n- **Alcoa Corporation**: One of the largest and most established U.S.-based producers, known for its domestic smelters and lower dependency on foreign feedstock.\n  - *Facilities*: Warrick Operations (IN), Massena (NY), and more.\n  - *Product*: Offers high-purity primary aluminum for aerospace, defense, and high-tech applications.\n- **Century Aluminum**: Operates the Hawesville, KY, and Mt. Holly, SC, smelters, both key U.S. aluminum assets with limited foreign dependency.\n  - Note: Century’s Hawesville plant specializes in high-purity production and is a qualified supplier for U.S. defense contracts.\n\n#### 2. **Canada**\n- **Rio Tinto**: Has major smelting operations in Quebec using hydroelectric power (cleaner, ESG-compliant feedstock), with a long track record of supplying U.S. and global clients.\n  - *Note*: Canadian aluminum is highly regarded for its purity; 56% of U.S. aluminum imports come from Canada (per USGS).\n  - *Risks*: Minimal (aligned with U.S. sanctions).\n\n#### 3. **Australia**\n- **South32 & Alumina Limited**: Major bauxite and alumina producers, but also involved through partnerships in aluminum smelting.\n  - *Supply*: While Australia exports most of its primary aluminum, it’s a dependable partner.\n  - *ESG*: Strong compliance and no PRC/Russia ties.\n\n#### 4. **Norway**\n- **Norsk Hydro**: One of the world’s largest producers of fully traceable, renewable-powered primary aluminum.\n  - *ESG focus*: High purity, low-carbon aluminum (\"Hydro REDUXA\" brand).\n\n#### 5. **Iceland**\n- **Alcoa Fjarðaál & Rio Tinto ISAL**: Icelandic smelters primarily export to European and U.S. markets, and their power grid is 100% renewable.\n\n---\n\n### Practical Steps for Partnership and Procurement\n1. **Direct Industrial Contracts**:\n   - Contact procurement teams at Alcoa, Century Aluminum, Rio Tinto (Canada), Norsk Hydro, and South32.\n   - Ensure the contract stipulates verification of non-PRC/Russian origin (include chain-of-custody, Certificates of Origin, and ESG compliance data).\n2. **Via Global Traders/Distributors**:\n   - Work with established metals traders that specialize in North American and Western European aluminum (e.g., Trafigura, Glencore [Canada/Norway-sourced only], Cargill Metals).\n   - Demand robust due diligence documentation.\n   \n3. **Government Support/Grants**:\n   - U.S. Department of Defense and Department of Energy have recently provided grants to expand domestic aluminum capacity (Muscle Shoals, AL; Ohio River Valley).\n   - Consider leveraging U.S. government programs for critical materials procurement and potential subsidies.\n\n---\n\n### Key Risks & Mitigations\n- **Supply Constraints**: Recent smelter closures in the U.S. and increased sanctions could tighten available supply. Advance procurement and multi-source agreements are advised.\n- **Traceability Assurance**: Insist on audited supply chains, especially for shipments from traders or intermediaries.\n\n---\n\n### Relevant Sources\n- **USGS Mineral Commodity Summaries, 2025**: Major aluminum suppliers and recent production, import data.\n- **U.S. Government Announcements (DOE, DOD grants, 2024)**: Current efforts to boost North American aluminum capacity.\n- **Company Reports**: Supplier ESG/principal sales documents (Alcoa, Century, Rio Tinto, Hydro, South32).\n\n---\n\n### Follow-up Questions\n1. What is your intended end-use (e.g., aerospace, defense, electronics) as this may narrow certified suppliers?\n2. Do you have purification or custom processing requirements beyond standard high-purity (e.g., 4N, 5N purity)?\n3. What is your desired delivery schedule or staging plan for the procurement (single lot vs. phased deliveries)?\n\n---\n\n**Summary**: For U.S./allied high-purity aluminum free from PRC or Russian ties, prioritize direct contracting with Alcoa, Century (U.S.), Rio Tinto (Canada), Norsk Hydro (Norway), and vetted distributors with full transparency. Consider leveraging government support initiatives and ensure all material supplied is chain-of-custody verified. \n\nSources:  \n- USGS Mineral Commodity Summaries, 2025  \n- U.S. Department of Energy and DoD funding announcements, 2024  \n- Company information: Alcoa, Century Aluminum, Rio Tinto, Norsk Hydro, South32\n\n",
+        "logprobs": []
+      }
+    },
+    {
+      "index": 1082,
+      "type": "response.content_part.done",
+      "fullChunk": {
+        "type": "response.content_part.done",
+        "sequence_number": 1081,
+        "item_id": "msg_68759ab3b5d481a1aa0ac0cf0e581f9f035bc8b3aaa84728",
+        "output_index": 0,
+        "content_index": 0,
+        "part": {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "To secure an additional 3,000 metric tons of high-purity aluminum from sources in the United States or allied countries—while strictly avoiding suppliers with ties to the People’s Republic of China (PRC) or Russia—it is essential to focus on the major primary producers within allied nations that maintain transparent supply chains. This comes amid heightened geopolitical scrutiny and recent sanctions on Russian and Chinese aluminum, increased U.S. tariffs, and efforts to “friend-shore” critical material supply chains.\n\n### Key Allied Aluminum Producers & Approaches\n\n#### 1. **United States**\n- **Alcoa Corporation**: One of the largest and most established U.S.-based producers, known for its domestic smelters and lower dependency on foreign feedstock.\n  - *Facilities*: Warrick Operations (IN), Massena (NY), and more.\n  - *Product*: Offers high-purity primary aluminum for aerospace, defense, and high-tech applications.\n- **Century Aluminum**: Operates the Hawesville, KY, and Mt. Holly, SC, smelters, both key U.S. aluminum assets with limited foreign dependency.\n  - Note: Century’s Hawesville plant specializes in high-purity production and is a qualified supplier for U.S. defense contracts.\n\n#### 2. **Canada**\n- **Rio Tinto**: Has major smelting operations in Quebec using hydroelectric power (cleaner, ESG-compliant feedstock), with a long track record of supplying U.S. and global clients.\n  - *Note*: Canadian aluminum is highly regarded for its purity; 56% of U.S. aluminum imports come from Canada (per USGS).\n  - *Risks*: Minimal (aligned with U.S. sanctions).\n\n#### 3. **Australia**\n- **South32 & Alumina Limited**: Major bauxite and alumina producers, but also involved through partnerships in aluminum smelting.\n  - *Supply*: While Australia exports most of its primary aluminum, it’s a dependable partner.\n  - *ESG*: Strong compliance and no PRC/Russia ties.\n\n#### 4. **Norway**\n- **Norsk Hydro**: One of the world’s largest producers of fully traceable, renewable-powered primary aluminum.\n  - *ESG focus*: High purity, low-carbon aluminum (\"Hydro REDUXA\" brand).\n\n#### 5. **Iceland**\n- **Alcoa Fjarðaál & Rio Tinto ISAL**: Icelandic smelters primarily export to European and U.S. markets, and their power grid is 100% renewable.\n\n---\n\n### Practical Steps for Partnership and Procurement\n1. **Direct Industrial Contracts**:\n   - Contact procurement teams at Alcoa, Century Aluminum, Rio Tinto (Canada), Norsk Hydro, and South32.\n   - Ensure the contract stipulates verification of non-PRC/Russian origin (include chain-of-custody, Certificates of Origin, and ESG compliance data).\n2. **Via Global Traders/Distributors**:\n   - Work with established metals traders that specialize in North American and Western European aluminum (e.g., Trafigura, Glencore [Canada/Norway-sourced only], Cargill Metals).\n   - Demand robust due diligence documentation.\n   \n3. **Government Support/Grants**:\n   - U.S. Department of Defense and Department of Energy have recently provided grants to expand domestic aluminum capacity (Muscle Shoals, AL; Ohio River Valley).\n   - Consider leveraging U.S. government programs for critical materials procurement and potential subsidies.\n\n---\n\n### Key Risks & Mitigations\n- **Supply Constraints**: Recent smelter closures in the U.S. and increased sanctions could tighten available supply. Advance procurement and multi-source agreements are advised.\n- **Traceability Assurance**: Insist on audited supply chains, especially for shipments from traders or intermediaries.\n\n---\n\n### Relevant Sources\n- **USGS Mineral Commodity Summaries, 2025**: Major aluminum suppliers and recent production, import data.\n- **U.S. Government Announcements (DOE, DOD grants, 2024)**: Current efforts to boost North American aluminum capacity.\n- **Company Reports**: Supplier ESG/principal sales documents (Alcoa, Century, Rio Tinto, Hydro, South32).\n\n---\n\n### Follow-up Questions\n1. What is your intended end-use (e.g., aerospace, defense, electronics) as this may narrow certified suppliers?\n2. Do you have purification or custom processing requirements beyond standard high-purity (e.g., 4N, 5N purity)?\n3. What is your desired delivery schedule or staging plan for the procurement (single lot vs. phased deliveries)?\n\n---\n\n**Summary**: For U.S./allied high-purity aluminum free from PRC or Russian ties, prioritize direct contracting with Alcoa, Century (U.S.), Rio Tinto (Canada), Norsk Hydro (Norway), and vetted distributors with full transparency. Consider leveraging government support initiatives and ensure all material supplied is chain-of-custody verified. \n\nSources:  \n- USGS Mineral Commodity Summaries, 2025  \n- U.S. Department of Energy and DoD funding announcements, 2024  \n- Company information: Alcoa, Century Aluminum, Rio Tinto, Norsk Hydro, South32\n\n"
+        }
+      }
+    },
+    {
+      "index": 1083,
+      "type": "response.output_item.done",
+      "fullChunk": {
+        "type": "response.output_item.done",
+        "sequence_number": 1082,
+        "output_index": 0,
+        "item": {
+          "id": "msg_68759ab3b5d481a1aa0ac0cf0e581f9f035bc8b3aaa84728",
+          "type": "message",
+          "status": "completed",
+          "content": [
+            {
+              "type": "output_text",
+              "annotations": [],
+              "logprobs": [],
+              "text": "To secure an additional 3,000 metric tons of high-purity aluminum from sources in the United States or allied countries—while strictly avoiding suppliers with ties to the People’s Republic of China (PRC) or Russia—it is essential to focus on the major primary producers within allied nations that maintain transparent supply chains. This comes amid heightened geopolitical scrutiny and recent sanctions on Russian and Chinese aluminum, increased U.S. tariffs, and efforts to “friend-shore” critical material supply chains.\n\n### Key Allied Aluminum Producers & Approaches\n\n#### 1. **United States**\n- **Alcoa Corporation**: One of the largest and most established U.S.-based producers, known for its domestic smelters and lower dependency on foreign feedstock.\n  - *Facilities*: Warrick Operations (IN), Massena (NY), and more.\n  - *Product*: Offers high-purity primary aluminum for aerospace, defense, and high-tech applications.\n- **Century Aluminum**: Operates the Hawesville, KY, and Mt. Holly, SC, smelters, both key U.S. aluminum assets with limited foreign dependency.\n  - Note: Century’s Hawesville plant specializes in high-purity production and is a qualified supplier for U.S. defense contracts.\n\n#### 2. **Canada**\n- **Rio Tinto**: Has major smelting operations in Quebec using hydroelectric power (cleaner, ESG-compliant feedstock), with a long track record of supplying U.S. and global clients.\n  - *Note*: Canadian aluminum is highly regarded for its purity; 56% of U.S. aluminum imports come from Canada (per USGS).\n  - *Risks*: Minimal (aligned with U.S. sanctions).\n\n#### 3. **Australia**\n- **South32 & Alumina Limited**: Major bauxite and alumina producers, but also involved through partnerships in aluminum smelting.\n  - *Supply*: While Australia exports most of its primary aluminum, it’s a dependable partner.\n  - *ESG*: Strong compliance and no PRC/Russia ties.\n\n#### 4. **Norway**\n- **Norsk Hydro**: One of the world’s largest producers of fully traceable, renewable-powered primary aluminum.\n  - *ESG focus*: High purity, low-carbon aluminum (\"Hydro REDUXA\" brand).\n\n#### 5. **Iceland**\n- **Alcoa Fjarðaál & Rio Tinto ISAL**: Icelandic smelters primarily export to European and U.S. markets, and their power grid is 100% renewable.\n\n---\n\n### Practical Steps for Partnership and Procurement\n1. **Direct Industrial Contracts**:\n   - Contact procurement teams at Alcoa, Century Aluminum, Rio Tinto (Canada), Norsk Hydro, and South32.\n   - Ensure the contract stipulates verification of non-PRC/Russian origin (include chain-of-custody, Certificates of Origin, and ESG compliance data).\n2. **Via Global Traders/Distributors**:\n   - Work with established metals traders that specialize in North American and Western European aluminum (e.g., Trafigura, Glencore [Canada/Norway-sourced only], Cargill Metals).\n   - Demand robust due diligence documentation.\n   \n3. **Government Support/Grants**:\n   - U.S. Department of Defense and Department of Energy have recently provided grants to expand domestic aluminum capacity (Muscle Shoals, AL; Ohio River Valley).\n   - Consider leveraging U.S. government programs for critical materials procurement and potential subsidies.\n\n---\n\n### Key Risks & Mitigations\n- **Supply Constraints**: Recent smelter closures in the U.S. and increased sanctions could tighten available supply. Advance procurement and multi-source agreements are advised.\n- **Traceability Assurance**: Insist on audited supply chains, especially for shipments from traders or intermediaries.\n\n---\n\n### Relevant Sources\n- **USGS Mineral Commodity Summaries, 2025**: Major aluminum suppliers and recent production, import data.\n- **U.S. Government Announcements (DOE, DOD grants, 2024)**: Current efforts to boost North American aluminum capacity.\n- **Company Reports**: Supplier ESG/principal sales documents (Alcoa, Century, Rio Tinto, Hydro, South32).\n\n---\n\n### Follow-up Questions\n1. What is your intended end-use (e.g., aerospace, defense, electronics) as this may narrow certified suppliers?\n2. Do you have purification or custom processing requirements beyond standard high-purity (e.g., 4N, 5N purity)?\n3. What is your desired delivery schedule or staging plan for the procurement (single lot vs. phased deliveries)?\n\n---\n\n**Summary**: For U.S./allied high-purity aluminum free from PRC or Russian ties, prioritize direct contracting with Alcoa, Century (U.S.), Rio Tinto (Canada), Norsk Hydro (Norway), and vetted distributors with full transparency. Consider leveraging government support initiatives and ensure all material supplied is chain-of-custody verified. \n\nSources:  \n- USGS Mineral Commodity Summaries, 2025  \n- U.S. Department of Energy and DoD funding announcements, 2024  \n- Company information: Alcoa, Century Aluminum, Rio Tinto, Norsk Hydro, South32\n\n"
+            }
+          ],
+          "role": "assistant"
+        }
+      }
+    },
+    {
+      "index": 1084,
+      "type": "response.output_item.added",
+      "fullChunk": {
+        "type": "response.output_item.added",
+        "sequence_number": 1083,
+        "output_index": 1,
+        "item": {
+          "id": "fc_68759ad4e5a481a1bdc379517c8c3fcf035bc8b3aaa84728",
+          "type": "function_call",
+          "status": "in_progress",
+          "arguments": "",
+          "call_id": "call_J5rsnMjXWdy0XmPHEdceIwgs",
+          "name": "extract_metadata"
+        }
+      }
+    },
+    {
+      "index": 1085,
+      "type": "response.function_call_arguments.delta",
+      "fullChunk": {
+        "type": "response.function_call_arguments.delta",
+        "sequence_number": 1084,
+        "item_id": "fc_68759ad4e5a481a1bdc379517c8c3fcf035bc8b3aaa84728",
+        "output_index": 1,
+        "delta": "{\""
+      }
+    },
+    {
+      "index": 1086,
+      "type": "response.function_call_arguments.delta",
+      "fullChunk": {
+        "type": "response.function_call_arguments.delta",
+        "sequence_number": 1085,
+        "item_id": "fc_68759ad4e5a481a1bdc379517c8c3fcf035bc8b3aaa84728",
+        "output_index": 1,
+        "delta": "sources"
+      }
+    },
+    // TRUNCATED for brevity
+    {
+      "index": 1374,
+      "type": "response.function_call_arguments.delta",
+      "fullChunk": {
+        "type": "response.function_call_arguments.delta",
+        "sequence_number": 1373,
+        "item_id": "fc_68759ad4e5a481a1bdc379517c8c3fcf035bc8b3aaa84728",
+        "output_index": 1,
+        "delta": "}"
+      }
+    },
+    {
+      "index": 1375,
+      "type": "response.function_call_arguments.done",
+      "fullChunk": {
+        "type": "response.function_call_arguments.done",
+        "sequence_number": 1374,
+        "item_id": "fc_68759ad4e5a481a1bdc379517c8c3fcf035bc8b3aaa84728",
+        "output_index": 1,
+        "arguments": "{\"sources\":[{\"title\":\"USGS Mineral Commodity Summaries, 2025\",\"url\":\"https://pubs.usgs.gov/periodicals/mcs2025/mcs2025-aluminum.pdf\",\"snippet\":\"Comprehensive data on U.S. and global aluminum production, import sources, and national supply chain details.\"},{\"title\":\"U.S. Department of Energy and DoD funding announcements, 2024\",\"url\":\"https://www.energy.gov/articles/doe-awards-millions-aluminum-production-and-processing-expansion\",\"snippet\":\"Details of grants, investments, and strategic initiatives to expand domestic aluminum production capacity.\"},{\"title\":\"Company information: Alcoa, Century Aluminum, Rio Tinto, Norsk Hydro, South32\",\"url\":\"https://www.alcoa.com; https://centuryaluminum.com; https://riotinto.com; https://hydro.com; https://south32.net\",\"snippet\":\"Official corporate information, high-purity product specs, and procurement contacts for major allied aluminum producers.\"}],\"related_materials\":[\"high purity aluminum\"],\"suggested_questions\":[\"What is your intended end-use (e.g., aerospace, defense, electronics) as this may narrow certified suppliers?\",\"Do you have purification or custom processing requirements beyond standard high-purity (e.g., 4N, 5N purity)?\",\"What is your desired delivery schedule or staging plan for the procurement (single lot vs. phased deliveries)?\"]}"
+      },
+      "functionCallAnalysis": {
+        "arguments": "{\"sources\":[{\"title\":\"USGS Mineral Commodity Summaries, 2025\",\"url\":\"https://pubs.usgs.gov/periodicals/mcs2025/mcs2025-aluminum.pdf\",\"snippet\":\"Comprehensive data on U.S. and global aluminum production, import sources, and national supply chain details.\"},{\"title\":\"U.S. Department of Energy and DoD funding announcements, 2024\",\"url\":\"https://www.energy.gov/articles/doe-awards-millions-aluminum-production-and-processing-expansion\",\"snippet\":\"Details of grants, investments, and strategic initiatives to expand domestic aluminum production capacity.\"},{\"title\":\"Company information: Alcoa, Century Aluminum, Rio Tinto, Norsk Hydro, South32\",\"url\":\"https://www.alcoa.com; https://centuryaluminum.com; https://riotinto.com; https://hydro.com; https://south32.net\",\"snippet\":\"Official corporate information, high-purity product specs, and procurement contacts for major allied aluminum producers.\"}],\"related_materials\":[\"high purity aluminum\"],\"suggested_questions\":[\"What is your intended end-use (e.g., aerospace, defense, electronics) as this may narrow certified suppliers?\",\"Do you have purification or custom processing requirements beyond standard high-purity (e.g., 4N, 5N purity)?\",\"What is your desired delivery schedule or staging plan for the procurement (single lot vs. phased deliveries)?\"]}",
+        "parsedArguments": {
+          "sources": [
+            {
+              "title": "USGS Mineral Commodity Summaries, 2025",
+              "url": "https://pubs.usgs.gov/periodicals/mcs2025/mcs2025-aluminum.pdf",
+              "snippet": "Comprehensive data on U.S. and global aluminum production, import sources, and national supply chain details."
+            },
+            {
+              "title": "U.S. Department of Energy and DoD funding announcements, 2024",
+              "url": "https://www.energy.gov/articles/doe-awards-millions-aluminum-production-and-processing-expansion",
+              "snippet": "Details of grants, investments, and strategic initiatives to expand domestic aluminum production capacity."
+            },
+            {
+              "title": "Company information: Alcoa, Century Aluminum, Rio Tinto, Norsk Hydro, South32",
+              "url": "https://www.alcoa.com; https://centuryaluminum.com; https://riotinto.com; https://hydro.com; https://south32.net",
+              "snippet": "Official corporate information, high-purity product specs, and procurement contacts for major allied aluminum producers."
+            }
+          ],
+          "related_materials": [
+            "high purity aluminum"
+          ],
+          "suggested_questions": [
+            "What is your intended end-use (e.g., aerospace, defense, electronics) as this may narrow certified suppliers?",
+            "Do you have purification or custom processing requirements beyond standard high-purity (e.g., 4N, 5N purity)?",
+            "What is your desired delivery schedule or staging plan for the procurement (single lot vs. phased deliveries)?"
+          ]
+        }
+      }
+    },
+    {
+      "index": 1376,
+      "type": "response.output_item.done",
+      "fullChunk": {
+        "type": "response.output_item.done",
+        "sequence_number": 1375,
+        "output_index": 1,
+        "item": {
+          "id": "fc_68759ad4e5a481a1bdc379517c8c3fcf035bc8b3aaa84728",
+          "type": "function_call",
+          "status": "completed",
+          "arguments": "{\"sources\":[{\"title\":\"USGS Mineral Commodity Summaries, 2025\",\"url\":\"https://pubs.usgs.gov/periodicals/mcs2025/mcs2025-aluminum.pdf\",\"snippet\":\"Comprehensive data on U.S. and global aluminum production, import sources, and national supply chain details.\"},{\"title\":\"U.S. Department of Energy and DoD funding announcements, 2024\",\"url\":\"https://www.energy.gov/articles/doe-awards-millions-aluminum-production-and-processing-expansion\",\"snippet\":\"Details of grants, investments, and strategic initiatives to expand domestic aluminum production capacity.\"},{\"title\":\"Company information: Alcoa, Century Aluminum, Rio Tinto, Norsk Hydro, South32\",\"url\":\"https://www.alcoa.com; https://centuryaluminum.com; https://riotinto.com; https://hydro.com; https://south32.net\",\"snippet\":\"Official corporate information, high-purity product specs, and procurement contacts for major allied aluminum producers.\"}],\"related_materials\":[\"high purity aluminum\"],\"suggested_questions\":[\"What is your intended end-use (e.g., aerospace, defense, electronics) as this may narrow certified suppliers?\",\"Do you have purification or custom processing requirements beyond standard high-purity (e.g., 4N, 5N purity)?\",\"What is your desired delivery schedule or staging plan for the procurement (single lot vs. phased deliveries)?\"]}",
+          "call_id": "call_J5rsnMjXWdy0XmPHEdceIwgs",
+          "name": "extract_metadata"
+        }
+      }
+    },
+    {
+      "index": 1377,
+      "type": "response.completed",
+      "fullChunk": {
+        "type": "response.completed",
+        "sequence_number": 1376,
+        "response": {
+          "id": "resp_68759ab2188481a183739a1b7f846757035bc8b3aaa84728",
+          "object": "response",
+          "created_at": 1752537778,
+          "status": "completed",
+          "background": false,
+          "error": null,
+          "incomplete_details": null,
+          "instructions": null,
+          "max_output_tokens": null,
+          "max_tool_calls": null,
+          "model": "gpt-4.1-2025-04-14",
+          "output": [
+            {
+              "id": "msg_68759ab3b5d481a1aa0ac0cf0e581f9f035bc8b3aaa84728",
+              "type": "message",
+              "status": "completed",
+              "content": [
+                {
+                  "type": "output_text",
+                  "annotations": [],
+                  "logprobs": [],
+                  "text": "To secure an additional 3,000 metric tons of high-purity aluminum from sources in the United States or allied countries—while strictly avoiding suppliers with ties to the People’s Republic of China (PRC) or Russia—it is essential to focus on the major primary producers within allied nations that maintain transparent supply chains. This comes amid heightened geopolitical scrutiny and recent sanctions on Russian and Chinese aluminum, increased U.S. tariffs, and efforts to “friend-shore” critical material supply chains.\n\n### Key Allied Aluminum Producers & Approaches\n\n#### 1. **United States**\n- **Alcoa Corporation**: One of the largest and most established U.S.-based producers, known for its domestic smelters and lower dependency on foreign feedstock.\n  - *Facilities*: Warrick Operations (IN), Massena (NY), and more.\n  - *Product*: Offers high-purity primary aluminum for aerospace, defense, and high-tech applications.\n- **Century Aluminum**: Operates the Hawesville, KY, and Mt. Holly, SC, smelters, both key U.S. aluminum assets with limited foreign dependency.\n  - Note: Century’s Hawesville plant specializes in high-purity production and is a qualified supplier for U.S. defense contracts.\n\n#### 2. **Canada**\n- **Rio Tinto**: Has major smelting operations in Quebec using hydroelectric power (cleaner, ESG-compliant feedstock), with a long track record of supplying U.S. and global clients.\n  - *Note*: Canadian aluminum is highly regarded for its purity; 56% of U.S. aluminum imports come from Canada (per USGS).\n  - *Risks*: Minimal (aligned with U.S. sanctions).\n\n#### 3. **Australia**\n- **South32 & Alumina Limited**: Major bauxite and alumina producers, but also involved through partnerships in aluminum smelting.\n  - *Supply*: While Australia exports most of its primary aluminum, it’s a dependable partner.\n  - *ESG*: Strong compliance and no PRC/Russia ties.\n\n#### 4. **Norway**\n- **Norsk Hydro**: One of the world’s largest producers of fully traceable, renewable-powered primary aluminum.\n  - *ESG focus*: High purity, low-carbon aluminum (\"Hydro REDUXA\" brand).\n\n#### 5. **Iceland**\n- **Alcoa Fjarðaál & Rio Tinto ISAL**: Icelandic smelters primarily export to European and U.S. markets, and their power grid is 100% renewable.\n\n---\n\n### Practical Steps for Partnership and Procurement\n1. **Direct Industrial Contracts**:\n   - Contact procurement teams at Alcoa, Century Aluminum, Rio Tinto (Canada), Norsk Hydro, and South32.\n   - Ensure the contract stipulates verification of non-PRC/Russian origin (include chain-of-custody, Certificates of Origin, and ESG compliance data).\n2. **Via Global Traders/Distributors**:\n   - Work with established metals traders that specialize in North American and Western European aluminum (e.g., Trafigura, Glencore [Canada/Norway-sourced only], Cargill Metals).\n   - Demand robust due diligence documentation.\n   \n3. **Government Support/Grants**:\n   - U.S. Department of Defense and Department of Energy have recently provided grants to expand domestic aluminum capacity (Muscle Shoals, AL; Ohio River Valley).\n   - Consider leveraging U.S. government programs for critical materials procurement and potential subsidies.\n\n---\n\n### Key Risks & Mitigations\n- **Supply Constraints**: Recent smelter closures in the U.S. and increased sanctions could tighten available supply. Advance procurement and multi-source agreements are advised.\n- **Traceability Assurance**: Insist on audited supply chains, especially for shipments from traders or intermediaries.\n\n---\n\n### Relevant Sources\n- **USGS Mineral Commodity Summaries, 2025**: Major aluminum suppliers and recent production, import data.\n- **U.S. Government Announcements (DOE, DOD grants, 2024)**: Current efforts to boost North American aluminum capacity.\n- **Company Reports**: Supplier ESG/principal sales documents (Alcoa, Century, Rio Tinto, Hydro, South32).\n\n---\n\n### Follow-up Questions\n1. What is your intended end-use (e.g., aerospace, defense, electronics) as this may narrow certified suppliers?\n2. Do you have purification or custom processing requirements beyond standard high-purity (e.g., 4N, 5N purity)?\n3. What is your desired delivery schedule or staging plan for the procurement (single lot vs. phased deliveries)?\n\n---\n\n**Summary**: For U.S./allied high-purity aluminum free from PRC or Russian ties, prioritize direct contracting with Alcoa, Century (U.S.), Rio Tinto (Canada), Norsk Hydro (Norway), and vetted distributors with full transparency. Consider leveraging government support initiatives and ensure all material supplied is chain-of-custody verified. \n\nSources:  \n- USGS Mineral Commodity Summaries, 2025  \n- U.S. Department of Energy and DoD funding announcements, 2024  \n- Company information: Alcoa, Century Aluminum, Rio Tinto, Norsk Hydro, South32\n\n"
+                }
+              ],
+              "role": "assistant"
+            },
+            {
+              "id": "fc_68759ad4e5a481a1bdc379517c8c3fcf035bc8b3aaa84728",
+              "type": "function_call",
+              "status": "completed",
+              "arguments": "{\"sources\":[{\"title\":\"USGS Mineral Commodity Summaries, 2025\",\"url\":\"https://pubs.usgs.gov/periodicals/mcs2025/mcs2025-aluminum.pdf\",\"snippet\":\"Comprehensive data on U.S. and global aluminum production, import sources, and national supply chain details.\"},{\"title\":\"U.S. Department of Energy and DoD funding announcements, 2024\",\"url\":\"https://www.energy.gov/articles/doe-awards-millions-aluminum-production-and-processing-expansion\",\"snippet\":\"Details of grants, investments, and strategic initiatives to expand domestic aluminum production capacity.\"},{\"title\":\"Company information: Alcoa, Century Aluminum, Rio Tinto, Norsk Hydro, South32\",\"url\":\"https://www.alcoa.com; https://centuryaluminum.com; https://riotinto.com; https://hydro.com; https://south32.net\",\"snippet\":\"Official corporate information, high-purity product specs, and procurement contacts for major allied aluminum producers.\"}],\"related_materials\":[\"high purity aluminum\"],\"suggested_questions\":[\"What is your intended end-use (e.g., aerospace, defense, electronics) as this may narrow certified suppliers?\",\"Do you have purification or custom processing requirements beyond standard high-purity (e.g., 4N, 5N purity)?\",\"What is your desired delivery schedule or staging plan for the procurement (single lot vs. phased deliveries)?\"]}",
+              "call_id": "call_J5rsnMjXWdy0XmPHEdceIwgs",
+              "name": "extract_metadata"
+            }
+          ],
+          "parallel_tool_calls": true,
+          "previous_response_id": null,
+          "reasoning": {
+            "effort": null,
+            "summary": null
+          },
+          "service_tier": "default",
+          "store": true,
+          "temperature": 1,
+          "text": {
+            "format": {
+              "type": "text"
+            }
+          },
+          "tool_choice": "auto",
+          "tools": [
+            {
+              "type": "function",
+              "description": "Extract metadata from the response including sources, related materials, and suggested questions",
+              "name": "extract_metadata",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "sources": {
+                    "type": "array",
+                    "description": "List of sources referenced in the response",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string",
+                          "description": "Title of the source"
+                        },
+                        "url": {
+                          "type": "string",
+                          "description": "URL of the source"
+                        },
+                        "snippet": {
+                          "type": "string",
+                          "description": "Snippet or description of the source"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "url",
+                        "snippet"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "related_materials": {
+                    "type": "array",
+                    "description": "List of related materials mentioned in the response",
+                    "items": {
+                      "type": "string",
+                      "description": "Name of the material"
+                    }
+                  },
+                  "suggested_questions": {
+                    "type": "array",
+                    "description": "List of follow-up questions suggested based on the response",
+                    "items": {
+                      "type": "string",
+                      "description": "A follow-up question"
+                    }
+                  }
+                },
+                "required": [
+                  "sources",
+                  "related_materials",
+                  "suggested_questions"
+                ],
+                "additionalProperties": false
+              },
+              "strict": true
+            },
+            {
+              "type": "web_search_preview",
+              "search_context_size": "medium",
+              "user_location": {
+                "type": "approximate",
+                "city": null,
+                "country": "US",
+                "region": null,
+                "timezone": null
+              }
+            }
+          ],
+          "top_logprobs": 0,
+          "top_p": 1,
+          "truncation": "disabled",
+          "usage": {
+            "input_tokens": 2339,
+            "input_tokens_details": {
+              "cached_tokens": 3310
+            },
+            "output_tokens": 1378,
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            },
+            "total_tokens": 3717
+          },
+          "user": null,
+          "metadata": {}
+        }
+      }
+    }
+  ]
+}

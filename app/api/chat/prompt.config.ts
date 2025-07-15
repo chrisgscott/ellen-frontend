@@ -32,9 +32,13 @@ Workflow:
 1. Query relevant databases and search for context
 2. Analyze the information from multiple sources
 3. **Write and deliver your complete text response** with citations, analysis, and follow-up questions
-4. **Only after completing your text response**, call the extract_metadata function with:
+4. **Silently call the extract_metadata function** (do not announce this) with:
    - All sources referenced in your response
    - All critical materials mentioned in your response  
    - The 3 follow-up questions you provided
 
-**IMPORTANT**: You must provide a full written response first, then call the function. Do not skip the text response.`;
+**IMPORTANT**: 
+- You must provide a full written response first, then call the function
+- Do not announce or mention that you are calling the extract_metadata function
+- Do not say things like "Next, I will provide the structured metadata" or similar
+- The function call should happen automatically and silently`;

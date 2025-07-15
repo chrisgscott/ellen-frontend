@@ -15,6 +15,10 @@
 
 ---
 
+[2025-07-14 17:49] — Added comprehensive logging to debug OpenAI response parsing issues. Created logOpenAI Response function that dumps all chunks received from OpenAI streaming API with full JSON structure, special analysis of function call completions, and parsed function arguments. This will help identify why metadata extraction isn't working properly despite streaming appearing to work.
+
+[2025-07-14 17:42] — Fixed chat UI to properly display streamed metadata. Updated message rendering to show related materials cards and suggested questions for each individual assistant message (not just the last one). Fixed tabs structure by consolidating duplicate Tabs components so header tab triggers properly control content display. Sources tab now works correctly. Clickable suggested questions automatically trigger new queries via handleFollowUp function.
+
 [2025-07-14 17:34] — ACTUALLY FIXED the streaming issue! The problem was in the system prompt, not the model name (gpt-4.1 is correct). The AI was interpreting "ALWAYS call the extract_metadata function at the end of your response" as "ONLY call the function" and skipping text generation entirely. Updated the prompt to explicitly instruct: "FIRST provide complete text response, THEN call the function". This explains why we only saw function call chunks but no response.output_text.delta chunks.
 
 [2025-07-14 14:11] — Incorrectly thought the issue was model name 'gpt-4.1' vs 'gpt-4o', but gpt-4.1 is actually OpenAI's flagship model. Reverted that change.

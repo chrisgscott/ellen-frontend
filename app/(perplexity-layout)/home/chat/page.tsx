@@ -542,74 +542,71 @@ export default function ChatPage() {
       <div className="flex-1 overflow-auto pb-24">
         {session && (
           <div className="mb-8">
-            {/* Sticky Session Header */}
-            <header className="sticky top-0 z-10 bg-background p-4">
-              {/* Header fade overlay */}
-              <div className="absolute -bottom-4 left-0 right-0 h-4 bg-gradient-to-b from-background to-transparent pointer-events-none"></div>
-              <div className="max-w-4xl mx-auto border-b border-border pb-4">
-                <h1 className="text-2xl font-medium">
-                  {session.messages.find(m => m.role === 'user')?.content || 'Chat Session'}
-                </h1>
-                
-                {/* Tabs */}
-                <Tabs defaultValue="answer" className="mt-4">
-                  <TabsList>
-                    <TabsTrigger value="answer">Answer</TabsTrigger>
-                    <TabsTrigger value="sources">Sources</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-            </header>
-            
-            {/* Session Content */}
+            {/* Session Content with Tabs */}
             <Tabs defaultValue="answer" className="w-full">
+              {/* Sticky Session Header */}
+              <header className="sticky top-0 z-10 bg-background p-4">
+                {/* Header fade overlay */}
+                <div className="absolute -bottom-4 left-0 right-0 h-4 bg-gradient-to-b from-background to-transparent pointer-events-none"></div>
+                <div className="max-w-4xl mx-auto border-b border-border pb-4">
+                  <h1 className="text-2xl font-medium">
+                    {session.messages.find(m => m.role === 'user')?.content || 'Chat Session'}
+                  </h1>
+                  
+                  {/* Tabs */}
+                  <div className="mt-4">
+                    <TabsList>
+                      <TabsTrigger value="answer">Answer</TabsTrigger>
+                      <TabsTrigger value="sources">Sources</TabsTrigger>
+                    </TabsList>
+                  </div>
+                </div>
+              </header>
               <TabsContent value="answer" className="mt-0 p-0">
                 <div className="max-w-4xl mx-auto p-4">
-                  {/* Related Materials Cards */}
-                  {session && session.messages.length > 0 && session.messages[session.messages.length - 1].role === 'assistant' && (
-          <>
-            {session.messages[session.messages.length - 1].related_materials && session.messages[session.messages.length - 1].related_materials!.length > 0 && (
-              <div className="mt-4">
-                <h3 className="text-lg font-semibold mb-2">Related Materials</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {session.messages[session.messages.length - 1].related_materials!.map((material, index) => (
-                    <div key={index} className="border rounded-lg p-4" style={{ borderColor: material.material_card_color || '#e0e0e0' }}>
-                      <h4 className="font-bold text-md">{material.material}</h4>
-                      <p className="text-sm text-gray-600">Supply Score: {material.supply_score}</p>
-                      <p className="text-sm text-gray-600">Ownership Score: {material.ownership_score}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {session.messages[session.messages.length - 1].suggested_questions && session.messages[session.messages.length - 1].suggested_questions!.length > 0 && (
-              <div className="mt-8">
-                <h3 className="text-lg font-semibold mb-2">Suggested Questions</h3>
-                <div className="flex flex-wrap gap-2">
-                  {session.messages[session.messages.length - 1].suggested_questions!.map((question, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleFollowUp(question)}
-                      className="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg text-sm hover:bg-gray-200 transition-colors"
-                    >
-                      {question}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-                  
                   {/* Chat Messages - Show all messages */}
                   <div className="space-y-6">
-                    {session.messages.map((message: {role: 'user' | 'assistant', content: string}, index: number) => (
-                      <ChatMessage 
-                        key={index} 
-                        message={message} 
-                        isLoading={session.isLoading && index === session.messages.length - 1 && message.role === 'assistant'} 
-                      />
+                    {session.messages.map((message: Message, index: number) => (
+                      <div key={index}>
+                        <ChatMessage 
+                          message={message} 
+                          isLoading={session.isLoading && index === session.messages.length - 1 && message.role === 'assistant'} 
+                        />
+                        
+                        {/* Show related materials for this specific message */}
+                        {message.related_materials && message.related_materials.length > 0 && (
+                          <div className="mt-4">
+                            <h3 className="text-lg font-semibold mb-2">Related Materials</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {message.related_materials.map((material, materialIndex) => (
+                                <div key={materialIndex} className="border rounded-lg p-4" style={{ borderColor: material.material_card_color || '#e0e0e0' }}>
+                                  <h4 className="font-bold text-md">{material.material}</h4>
+                                  <p className="text-sm text-gray-600">Supply Score: {material.supply_score}</p>
+                                  <p className="text-sm text-gray-600">Ownership Score: {material.ownership_score}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Show suggested questions for this specific message */}
+                        {message.suggested_questions && message.suggested_questions.length > 0 && (
+                          <div className="mt-4">
+                            <h3 className="text-lg font-semibold mb-2">Suggested Questions</h3>
+                            <div className="flex flex-wrap gap-2">
+                              {message.suggested_questions.map((question, questionIndex) => (
+                                <button
+                                  key={questionIndex}
+                                  onClick={() => handleFollowUp(question)}
+                                  className="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg text-sm hover:bg-gray-200 transition-colors"
+                                >
+                                  {question}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>

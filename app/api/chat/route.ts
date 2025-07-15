@@ -3,11 +3,60 @@ import OpenAI from 'openai';
 import { getSystemPrompt } from './prompt.config';
 import { createClient } from '@supabase/supabase-js';
 import z from 'zod';
+import fs from 'fs';
+import path from 'path';
 
 // ----- Initialize clients -----
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+// ----- Logging function -----
+const logOpenAIResponse = (sessionId: string, chunks: any[]) => {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const filename = `openai-response-${sessionId}-${timestamp}.json`;
+  const logPath = path.join(process.cwd(), 'logs', filename);
+  
+  // Ensure logs directory exists
+  const logsDir = path.join(process.cwd(), 'logs');
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+  }
+  
+  const logData = {
+    sessionId,
+    timestamp: new Date().toISOString(),
+    totalChunks: chunks.length,
+    chunks: chunks.map((chunk, index) => ({
+      index: index + 1,
+      type: chunk.type,
+      fullChunk: chunk,
+      ...(chunk.type === 'response.function_call_arguments.done' && {
+        functionCallAnalysis: {
+          name: chunk.name,
+          arguments: chunk.arguments,
+          parsedArguments: (() => {
+            try {
+              return JSON.parse(chunk.arguments);
+            } catch (e) {
+              return { error: 'Failed to parse arguments', originalError: e.message };
+            }
+          })()
+        }
+      })
+    }))
+  };
+  
+  // Write to file
+  fs.writeFileSync(logPath, JSON.stringify(logData, null, 2));
+  
+  // Also log to console for immediate feedback
+  console.log('\n=== OPENAI RESPONSE LOGGED ===');
+  console.log('Session ID:', sessionId);
+  console.log('Total chunks:', chunks.length);
+  console.log('Log file:', logPath);
+  console.log('=== END LOG ===\n');
+};
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -262,6 +311,7 @@ const extractSuggestionsFromResponse = (responseText: string): string[] => {
 };
 
 interface SourceData {
+  id: string;
   title: string;
   url: string;
   snippet?: string;
@@ -280,6 +330,7 @@ const extractSourcesFromResponse = (responseText: string): SourceData[] => {
   
   while ((match = sourceRegex.exec(sourcesSection)) !== null) {
     sources.push({
+      id: `source-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       title: match[1].trim(),
       url: match[2].trim(),
       snippet: match[3] ? match[3].trim() : undefined
@@ -554,10 +605,17 @@ export async function POST(request: NextRequest) {
           } | null = null;
           // Track if we've already streamed metadata to avoid duplicates
           let metadataStreamed = false;
+          // Store processed materials for database saving
+          let processedMaterials: MaterialData[] = [];
+          // Collect all chunks for debugging
+          const allChunks: any[] = [];
 
           // Stream the response
           console.log('=== OpenAI API Response Stream Started ===');
           for await (const chunk of response) {
+            // Collect chunk for debugging
+            allChunks.push(chunk);
+            
             console.log('\n=== CHUNK DEBUG ===');
             console.log('Chunk type:', chunk.type);
             console.log('Full chunk:', JSON.stringify(chunk, null, 2));
@@ -602,12 +660,20 @@ export async function POST(request: NextRequest) {
               // Function call arguments complete
               console.log('Function call complete:', chunk.item_id, chunk.arguments);
               
-              // If this is our metadata extraction function
-              if (chunk.item_id && chunk.item_id.includes('extract_metadata')) {
-                try {
-                  const functionArgs = JSON.parse(chunk.arguments);
+              // Check if this function call contains our expected metadata structure
+              // (more reliable than checking item_id which is a hash)
+              try {
+                const functionArgs = JSON.parse(chunk.arguments);
+                const hasMetadataStructure = functionArgs.sources && 
+                  functionArgs.related_materials && 
+                  functionArgs.suggested_questions;
+                
+                if (hasMetadataStructure) {
                   extractedMetadata = {
-                    sources: functionArgs.sources || [],
+                    sources: (functionArgs.sources || []).map((source: any, index: number) => ({
+                      id: source.id || `function-${Date.now()}-${index}`,
+                      ...source
+                    })),
                     related_materials: functionArgs.related_materials || [],
                     suggested_questions: functionArgs.suggested_questions || []
                   };
@@ -663,6 +729,9 @@ export async function POST(request: NextRequest) {
                       // Wait for all material fetching to complete
                       const materials = await Promise.all(materialPromises);
                       
+                      // Store materials for database saving
+                      processedMaterials = materials;
+                      
                       console.log('Streaming materials from function call:', materials);
                       controller.enqueue(
                         encoder.encode(`data: ${JSON.stringify({ 
@@ -684,9 +753,9 @@ export async function POST(request: NextRequest) {
                       })}\n\n`)
                     );
                   }
-                } catch (error) {
-                  console.error('Error parsing function call arguments:', error);
                 }
+              } catch (error) {
+                console.error('Error parsing function call arguments:', error);
               }
               
               controller.enqueue(
@@ -704,58 +773,65 @@ export async function POST(request: NextRequest) {
               console.log('Full response content:', fullResponse);
               console.log('========================');
               
-              // Only process and save metadata if we haven't already streamed it from function call
-              if (!metadataStreamed) {
-                let materials: MaterialData[] = [];
-                let suggestions: string[] = [];
-                let sources: SourceData[] = [];
-                
-                if (extractedMetadata) {
-                  // Use the metadata we already extracted from the function call
-                  // For materials, we need to fetch the full material data from the database
-                  if (extractedMetadata.related_materials.length > 0) {
-                    console.log('Processing materials in completion handler:', extractedMetadata.related_materials);
-                    
-                    // Process each material name
-                    const materialPromises = extractedMetadata.related_materials.map(async (materialName) => {
-                      console.log(`Fetching material from database: ${materialName}`);
-                      const { data: fetchedMaterials, error } = await supabase
-                        .from('materials')
-                        .select('*')
-                        .ilike('material', materialName);
-                      
-                      if (error) {
-                        console.error(`Error fetching material ${materialName}:`, error);
-                      }
-                      
-                      // If we found materials, use them
-                      if (fetchedMaterials && fetchedMaterials.length > 0) {
-                        console.log(`Found existing material for ${materialName}:`, fetchedMaterials[0]);
-                        return fetchedMaterials[0];
-                      } else {
-                        // Otherwise, create placeholder material
-                        const placeholderMaterial = {
-                          id: materialName.toLowerCase().replace(/\s+/g, '-'),
-                          material: materialName,
-                          created_at: new Date().toISOString()
-                        };
-                        console.log(`Created placeholder material for ${materialName}:`, placeholderMaterial);
-                        return placeholderMaterial;
-                      }
-                    });
-                    
-                    // Wait for all material fetching to complete
-                    materials = await Promise.all(materialPromises);
-                    console.log('Materials after processing:', materials);
-                  }
+              // Log all chunks for debugging
+              logOpenAIResponse(sessionId, allChunks);
+              
+              // Prepare metadata for database saving
+              let materials: MaterialData[] = [];
+              let suggestions: string[] = [];
+              let sources: SourceData[] = [];
+              
+              if (metadataStreamed && extractedMetadata) {
+                // Use the metadata we already processed and streamed
+                materials = processedMaterials; // Use stored processed materials
+                suggestions = extractedMetadata.suggested_questions;
+                sources = extractedMetadata.sources;
+                console.log('Using already processed metadata for database saving:', { materials, suggestions, sources });
+              } else if (extractedMetadata) {
+                // Process metadata that wasn't streamed yet
+                if (extractedMetadata.related_materials.length > 0) {
+                  console.log('Processing materials in completion handler:', extractedMetadata.related_materials);
                   
-                  suggestions = extractedMetadata.suggested_questions;
-                  sources = extractedMetadata.sources;
-                } else {
-                  // Fall back to regex extraction if function calling didn't work
-                  materials = await extractMaterialsFromResponse(fullResponse);
-                  suggestions = extractSuggestionsFromResponse(fullResponse);
-                  sources = extractSourcesFromResponse(fullResponse);
+                  // Process each material name
+                  const materialPromises = extractedMetadata.related_materials.map(async (materialName) => {
+                    console.log(`Fetching material from database: ${materialName}`);
+                    const { data: fetchedMaterials, error } = await supabase
+                      .from('materials')
+                      .select('*')
+                      .ilike('material', materialName);
+                    
+                    if (error) {
+                      console.error(`Error fetching material ${materialName}:`, error);
+                    }
+                    
+                    // If we found materials, use them
+                    if (fetchedMaterials && fetchedMaterials.length > 0) {
+                      console.log(`Found existing material for ${materialName}:`, fetchedMaterials[0]);
+                      return fetchedMaterials[0];
+                    } else {
+                      // Otherwise, create placeholder material
+                      const placeholderMaterial = {
+                        id: materialName.toLowerCase().replace(/\s+/g, '-'),
+                        material: materialName,
+                        created_at: new Date().toISOString()
+                      };
+                      console.log(`Created placeholder material for ${materialName}:`, placeholderMaterial);
+                      return placeholderMaterial;
+                    }
+                  });
+                  
+                  // Wait for all material fetching to complete
+                  materials = await Promise.all(materialPromises);
+                  console.log('Materials after processing:', materials);
+                }
+                
+                suggestions = extractedMetadata.suggested_questions;
+                sources = extractedMetadata.sources;
+              } else {
+                // Fall back to regex extraction if function calling didn't work
+                materials = await extractMaterialsFromResponse(fullResponse);
+                suggestions = extractSuggestionsFromResponse(fullResponse);
+                sources = extractSourcesFromResponse(fullResponse);
                   
                   // Stream materials to the frontend (only if not already streamed)
                   console.log('=== Streaming Materials ===');
@@ -785,12 +861,13 @@ export async function POST(request: NextRequest) {
                   let sourcesToStream: SourceData[] = [];
                   
                   if (sources && sources.length > 0) {
-                    // Use sources from regex extraction
+                    // Use sources (either from function call or regex extraction)
                     sourcesToStream = sources;
-                    console.log('Using sources from regex extraction:', sourcesToStream);
+                    console.log('Using sources from extraction:', sourcesToStream);
                   } else if (pineconeContext && pineconeContext.length > 0) {
                     // Fall back to Pinecone search results
-                    sourcesToStream = pineconeContext.map((doc: PineconeDocument) => ({
+                    sourcesToStream = pineconeContext.map((doc: PineconeDocument, index: number) => ({
+                      id: `pinecone-${Date.now()}-${index}`,
                       title: doc.metadata?.title || 'Document',
                       url: doc.metadata?.url || '',
                       snippet: doc.metadata?.text || doc.text || ''
@@ -810,9 +887,9 @@ export async function POST(request: NextRequest) {
                   }
                 }
 
-                // Save assistant response to database with all metadata
-                await saveMessage(sessionId, 'assistant', fullResponse, materials, suggestions, sources);
-              }
+              // Save assistant response to database with all metadata
+              console.log('Saving message to database with metadata:', { materials, suggestions, sources });
+              await saveMessage(sessionId, 'assistant', fullResponse, materials, suggestions, sources);
               
               // The metadata is now saved with the message, so no further action is needed here.
             }
