@@ -1,54 +1,75 @@
-// Shared type definitions for the chat feature.
-// Keeping these in one place reduces circular-import risk and keeps page components lean.
+/**
+ * Chat data model types following Projects > Sessions > Threads > Messages paradigm
+ * Aligned with the existing database schema
+ */
 
-export interface Material {
-  material: string;
-  supply_score: number;
-  ownership_score: number;
-  material_card_color?: string;
+// User or assistant message
+export interface Message {
+  id: string;
+  session_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  metadata?: Record<string, unknown>;
+  sources?: Source[];
+  related_materials?: Material[];
+  suggested_questions?: string[];
+  created_at?: string;
 }
 
+// Source reference from assistant responses
 export interface Source {
-  id: string;
   title: string;
-  content: string;
+  url: string;
+  snippet?: string;
+}
+
+// Material reference from assistant responses
+export interface Material {
+  id: string;
+  material: string; // Name of the material
+  description?: string;
   url?: string;
 }
 
-// ----- Projects ----------------------------------------------------
+// A thread contains a user message and assistant response pair
+export interface Thread {
+  thread_id: string;
+  session_id: string;
+  user_message_id: string;
+  assistant_message_id?: string;
+  user_message: Message;
+  assistant_message: Message | null;
+  sources: Source[];
+  related_materials: Material[];
+  suggested_questions: string[];
+  created_at?: string;
+}
+
+// A session contains multiple threads and belongs to a project
+export interface Session {
+  id: string;
+  user_id?: string;
+  project_id: string | null;
+  title?: string;
+  metadata?: Record<string, unknown>;
+  threads: Thread[];
+  is_loading?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  expires_at?: string;
+}
+
+// A project can contain multiple sessions
 export interface Project {
   id: string;
-  name?: string;
-  metadata?: Record<string, any>;
+  name: string;
+  description?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  related_materials?: Material[];
-  suggested_questions?: string[];
-  sources?: Source[]; // optional – filled once assistant responds
-}
-
-export interface ChatSession {
-  id: string;
-  projectId?: string;
-  threads: ChatThread[];
-  /** legacy support – present only for sessions created before threads table */
-  messages?: Message[];
-  isLoading: boolean;
-}
-
-export interface ChatThread {
-  id: string;
-  userMessage: Message | null;
-  assistantMessage: Message | null;
-  sources: Source[];
-  materials: Material[];
-  suggestions: string[];
-}
-
+// Server-sent event payload types
 export interface SSEPayload {
-  type: 'token' | 'materials' | 'sources' | 'suggestions';
-  content: string | Material[] | Source[] | string[];
+  type: 'token' | 'sources' | 'materials' | 'suggestions' | 'error';
+  content: string | Source[] | Material[] | string[] | Error;
 }

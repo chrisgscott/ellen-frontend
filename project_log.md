@@ -1,5 +1,13 @@
 # Project Log
 
+## Snapshot (as of 2025-07-15)
+- Refactored chat page to use modular components and hooks architecture
+- Created useChatSession hook to manage chat state and API interactions
+- Fixed database schema with threads_view for proper thread rendering
+- Implemented Projects > Sessions > Threads > Messages hierarchy
+- Chat UI now properly displays threaded conversations with sources
+- Real-time streaming and thread management working correctly
+
 ## Snapshot (as of 2025-07-14)
 - Fixed OpenAI function calling for structured metadata extraction
 - Implemented proper streaming of function call arguments and metadata
@@ -14,6 +22,8 @@
 - MCP tools configured for direct Supabase querying by AI assistant
 
 ---
+
+[2025-07-15 11:00] — Created threads_view database view to support the new chat architecture. Fixed 404 errors by creating a SQL view that joins threads and messages tables with proper JSON formatting for user and assistant messages. This enables the useChatSession hook to correctly fetch and display threaded conversations with their associated metadata (sources, materials, suggestions).
 
 [2025-07-14 17:49] — Added comprehensive logging to debug OpenAI response parsing issues. Created logOpenAI Response function that dumps all chunks received from OpenAI streaming API with full JSON structure, special analysis of function call completions, and parsed function arguments. This will help identify why metadata extraction isn't working properly despite streaming appearing to work.
 
