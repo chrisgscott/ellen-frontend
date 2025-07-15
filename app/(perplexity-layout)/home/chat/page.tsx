@@ -60,6 +60,14 @@ interface ChatSession {
   isLoading: boolean;
 }
 
+interface ChatThread {
+  userMessage: Message | null;
+  assistantMessage: Message | null;
+  sources: Source[];
+  materials: Material[];
+  suggestions: string[];
+}
+
 interface SSEPayload {
   type: 'token' | 'materials' | 'sources' | 'suggestions';
   content: string | Material[] | Source[] | string[];
@@ -544,72 +552,131 @@ export default function ChatPage() {
           <div className="mb-8">
             {/* Session Content with Tabs */}
             <Tabs defaultValue="answer" className="w-full">
-              {/* Sticky Session Header */}
-              <header className="sticky top-0 z-10 bg-background p-4">
-                {/* Header fade overlay */}
-                <div className="absolute -bottom-4 left-0 right-0 h-4 bg-gradient-to-b from-background to-transparent pointer-events-none"></div>
-                <div className="max-w-4xl mx-auto border-b border-border pb-4">
-                  <h1 className="text-2xl font-medium">
-                    {session.messages.find(m => m.role === 'user')?.content || 'Chat Session'}
-                  </h1>
-                  
-                  {/* Tabs */}
-                  <div className="mt-4">
-                    <TabsList>
-                      <TabsTrigger value="answer">Answer</TabsTrigger>
-                      <TabsTrigger value="sources">Sources</TabsTrigger>
-                    </TabsList>
-                  </div>
-                </div>
-              </header>
               <TabsContent value="answer" className="mt-0 p-0">
-                <div className="max-w-4xl mx-auto p-4">
-                  {/* Chat Messages - Show all messages */}
-                  <div className="space-y-6">
-                    {session.messages.map((message: Message, index: number) => (
-                      <div key={index}>
-                        <ChatMessage 
-                          message={message} 
-                          isLoading={session.isLoading && index === session.messages.length - 1 && message.role === 'assistant'} 
-                        />
-                        
-                        {/* Show related materials for this specific message */}
-                        {message.related_materials && message.related_materials.length > 0 && (
-                          <div className="mt-4">
-                            <h3 className="text-lg font-semibold mb-2">Related Materials</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {message.related_materials.map((material, materialIndex) => (
-                                <div key={materialIndex} className="border rounded-lg p-4" style={{ borderColor: material.material_card_color || '#e0e0e0' }}>
-                                  <h4 className="font-bold text-md">{material.material}</h4>
-                                  <p className="text-sm text-gray-600">Supply Score: {material.supply_score}</p>
-                                  <p className="text-sm text-gray-600">Ownership Score: {material.ownership_score}</p>
+                {/* Group messages into threads (user message + assistant response) */}
+                {(() => {
+                  const threads: ChatThread[] = [];
+                  let currentThread: ChatThread = { userMessage: null, assistantMessage: null, sources: [], materials: [], suggestions: [] };
+                  
+                  for (let i = 0; i < session.messages.length; i++) {
+                    const message = session.messages[i];
+                    
+                    if (message.role === 'user') {
+                      // If we have a previous thread, save it
+                      if (currentThread.userMessage) {
+                        threads.push(currentThread);
+                      }
+                      // Start new thread
+                      currentThread = {
+                        userMessage: message,
+                        assistantMessage: null,
+                        sources: [],
+                        materials: message.related_materials || [],
+                        suggestions: message.suggested_questions || []
+                      };
+                    } else if (message.role === 'assistant') {
+                      // Add assistant message to current thread
+                      currentThread.assistantMessage = message;
+                      currentThread.materials = [...currentThread.materials, ...(message.related_materials || [])];
+                      currentThread.suggestions = [...currentThread.suggestions, ...(message.suggested_questions || [])];
+                    }
+                  }
+                  
+                  // Don't forget the last thread
+                  if (currentThread.userMessage) {
+                    threads.push(currentThread);
+                  }
+                  
+                  return threads.map((thread, threadIndex) => (
+                    <div key={threadIndex} className="mb-8">
+                      {/* Sticky Thread Header */}
+                      <header className="sticky top-0 z-10 bg-background p-4">
+                        {/* Header fade overlay */}
+                        <div className="absolute -bottom-4 left-0 right-0 h-4 bg-gradient-to-b from-background to-transparent pointer-events-none"></div>
+                        <div className="max-w-4xl mx-auto border-b border-border pb-4">
+                          <h1 className="text-2xl font-medium">
+                            {thread.userMessage?.content || 'Chat Thread'}
+                          </h1>
+                          
+                          {/* Tabs - only show for first thread */}
+                          {threadIndex === 0 && (
+                            <div className="mt-4">
+                              <TabsList>
+                                <TabsTrigger value="answer">Answer</TabsTrigger>
+                                <TabsTrigger value="sources">Sources</TabsTrigger>
+                              </TabsList>
+                            </div>
+                          )}
+                        </div>
+                      </header>
+                      
+                      {/* Thread Content */}
+                      <div className="max-w-4xl mx-auto p-4">
+                        <div className="space-y-6">
+                          {/* User Message */}
+                          {thread.userMessage && (
+                            <ChatMessage 
+                              message={thread.userMessage} 
+                              isLoading={false}
+                            />
+                          )}
+                          
+                          {/* Assistant Message */}
+                          {thread.assistantMessage && (
+                            <div>
+                              <ChatMessage 
+                                message={thread.assistantMessage} 
+                                isLoading={session.isLoading && threadIndex === threads.length - 1}
+                              />
+                              
+                              {/* Show related materials for this thread */}
+                              {thread.materials && thread.materials.length > 0 && (
+                                <div className="mt-4">
+                                  <h3 className="text-lg font-semibold mb-2">Related Materials</h3>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {thread.materials.map((material, materialIndex) => (
+                                      <div key={materialIndex} className="border rounded-lg p-4" style={{ borderColor: material.material_card_color || '#e0e0e0' }}>
+                                        <h4 className="font-bold text-md">{material.material}</h4>
+                                        <p className="text-sm text-gray-600">Supply Score: {material.supply_score}</p>
+                                        <p className="text-sm text-gray-600">Ownership Score: {material.ownership_score}</p>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
-                              ))}
+                              )}
+                              
+                              {/* Show suggested questions for this thread */}
+                              {thread.suggestions && thread.suggestions.length > 0 && (
+                                <div className="mt-4">
+                                  <h3 className="text-lg font-semibold mb-2">Suggested Questions</h3>
+                                  <div className="flex flex-wrap gap-2">
+                                    {thread.suggestions.map((question, questionIndex) => (
+                                      <button
+                                        key={questionIndex}
+                                        onClick={() => handleFollowUp(question)}
+                                        className="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg text-sm hover:bg-gray-200 transition-colors"
+                                      >
+                                        {question}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        )}
-                        
-                        {/* Show suggested questions for this specific message */}
-                        {message.suggested_questions && message.suggested_questions.length > 0 && (
-                          <div className="mt-4">
-                            <h3 className="text-lg font-semibold mb-2">Suggested Questions</h3>
-                            <div className="flex flex-wrap gap-2">
-                              {message.suggested_questions.map((question, questionIndex) => (
-                                <button
-                                  key={questionIndex}
-                                  onClick={() => handleFollowUp(question)}
-                                  className="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg text-sm hover:bg-gray-200 transition-colors"
-                                >
-                                  {question}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                          )}
+                          
+                          {/* Loading state for incomplete thread */}
+                          {thread.userMessage && !thread.assistantMessage && session.isLoading && threadIndex === threads.length - 1 && (
+                            <ChatMessage 
+                              message={{ role: 'assistant', content: '' }}
+                              isLoading={true}
+                            />
+                          )}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
+                  ));
+                })()}
               </TabsContent>
               
               <TabsContent value="sources" className="mt-0 p-0">

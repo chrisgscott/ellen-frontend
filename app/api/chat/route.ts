@@ -12,7 +12,7 @@ const openai = new OpenAI({
 });
 
 // ----- Logging function -----
-const logOpenAIResponse = (sessionId: string, chunks: any[]) => {
+const logOpenAIResponse = (sessionId: string, chunks: OpenAI.Chat.Completions.ChatCompletionChunk[]) => {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const filename = `openai-response-${sessionId}-${timestamp}.json`;
   const logPath = path.join(process.cwd(), 'logs', filename);
@@ -27,24 +27,34 @@ const logOpenAIResponse = (sessionId: string, chunks: any[]) => {
     sessionId,
     timestamp: new Date().toISOString(),
     totalChunks: chunks.length,
-    chunks: chunks.map((chunk, index) => ({
-      index: index + 1,
-      type: chunk.type,
-      fullChunk: chunk,
-      ...(chunk.type === 'response.function_call_arguments.done' && {
-        functionCallAnalysis: {
-          name: chunk.name,
-          arguments: chunk.arguments,
-          parsedArguments: (() => {
-            try {
-              return JSON.parse(chunk.arguments);
-            } catch (e) {
-              return { error: 'Failed to parse arguments', originalError: e.message };
-            }
-          })()
-        }
-      })
-    }))
+    chunks: chunks.map((chunk, index) => {
+      const toolCall = chunk.choices[0]?.delta?.tool_calls?.[0];
+      const functionCall = toolCall?.function;
+
+      return {
+        index: index + 1,
+        type: functionCall ? 'function_call' : 'content',
+        fullChunk: chunk,
+        ...(functionCall && {
+          functionCallAnalysis: {
+            name: functionCall.name,
+            arguments: functionCall.arguments,
+            parsedArguments: (() => {
+              if (!functionCall.arguments) return null;
+              try {
+                // This might fail if arguments are streaming
+                return JSON.parse(functionCall.arguments);
+              } catch (e) {
+                if (e instanceof Error) {
+                  return { error: 'Failed to parse arguments', originalError: e.message, partialArgs: functionCall.arguments };
+                }
+                return { error: 'Failed to parse arguments', originalError: 'Unknown error', partialArgs: functionCall.arguments };
+              }
+            })()
+          }
+        })
+      };
+    })
   };
   
   // Write to file
@@ -253,6 +263,12 @@ const searchPineconeDocuments = async (query: string): Promise<PineconeDocument[
 };
 
 // ----- Request/Response schemas -----
+interface ExtractedMetadata {
+  sources: SourceData[];
+  related_materials: string[];
+  suggested_questions: string[];
+}
+
 const RequestSchema = z.object({
   query: z.string(),
   session_id: z.string().optional(),
@@ -598,11 +614,7 @@ export async function POST(request: NextRequest) {
           });
 
           let fullResponse = '';
-          let extractedMetadata: {
-            sources: SourceData[];
-            related_materials: string[];
-            suggested_questions: string[];
-          } | null = null;
+          let extractedMetadata: ExtractedMetadata | null = null;
           // Track if we've already streamed metadata to avoid duplicates
           let metadataStreamed = false;
           // Store processed materials for database saving
@@ -670,9 +682,9 @@ export async function POST(request: NextRequest) {
                 
                 if (hasMetadataStructure) {
                   extractedMetadata = {
-                    sources: (functionArgs.sources || []).map((source: any, index: number) => ({
-                      id: source.id || `function-${Date.now()}-${index}`,
-                      ...source
+                    sources: (functionArgs.sources || []).map((source: SourceData, index: number) => ({
+                      ...source,
+                      id: source.id || `function-${Date.now()}-${index}`
                     })),
                     related_materials: functionArgs.related_materials || [],
                     suggested_questions: functionArgs.suggested_questions || []
