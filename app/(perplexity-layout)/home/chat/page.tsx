@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
-import { Search } from 'lucide-react';
+import { Search, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ReactMarkdown from 'react-markdown';
@@ -241,7 +241,7 @@ export default function ChatPage() {
               {thread.suggested_questions && thread.suggested_questions.length > 0 && (
                 <div className="mb-6">
                   <h4 className="text-sm font-semibold text-gray-700 mb-3">Ask a follow-up</h4>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="space-y-2">
                     {thread.suggested_questions.map((question, index) => (
                       <button
                         key={index}
@@ -250,9 +250,10 @@ export default function ChatPage() {
                           // Focus the input
                           document.getElementById('chat-input')?.focus();
                         }}
-                        className="text-sm bg-gray-50 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-lg border border-gray-200 transition-colors text-left"
+                        className="w-full text-sm bg-gray-50 hover:bg-gray-100 text-gray-700 px-4 py-3 rounded-lg border border-gray-200 transition-colors text-left flex items-center gap-2"
                       >
-                        {question}
+                        <ChevronRight className="h-4 w-4 flex-shrink-0" style={{ color: '#1D638B' }} />
+                        <span>{question}</span>
                       </button>
                     ))}
                   </div>
