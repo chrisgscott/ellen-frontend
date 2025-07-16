@@ -4,8 +4,10 @@ import { Material } from '@/app/(perplexity-layout)/home/chat/types';
 /**
  * Extract materials mentioned in text by searching the materials database
  * Uses case-insensitive search and handles variations in material names
+ * @param text The text to extract materials from
+ * @param materialNames Optional array of material names from structured outputs
  */
-export async function extractMaterials(text: string): Promise<Material[]> {
+export async function extractMaterials(text: string, materialNames?: string[]): Promise<Material[]> {
   try {
     // Initialize Supabase client for this request
     const supabase = await createClient();
@@ -33,14 +35,40 @@ export async function extractMaterials(text: string): Promise<Material[]> {
     // Find materials mentioned in the text
     const foundMaterials = new Set<Material>();
     
-    // Check for each material in the text
-    materialMap.forEach((material, name) => {
-      // Case insensitive search
-      const regex = new RegExp(`\\b${name}\\b`, 'i');
-      if (regex.test(text)) {
-        foundMaterials.add(material);
+    // If material names are provided from structured output, prioritize them
+    if (materialNames && materialNames.length > 0) {
+      console.log('Using structured output material names:', materialNames);
+      
+      // First try exact matches
+      for (const name of materialNames) {
+        const lowerName = name.toLowerCase();
+        if (materialMap.has(lowerName)) {
+          foundMaterials.add(materialMap.get(lowerName)!);
+          continue;
+        }
+        
+        // Then try partial matches
+        for (const [mapName, material] of materialMap.entries()) {
+          if (lowerName.includes(mapName) || mapName.includes(lowerName)) {
+            foundMaterials.add(material);
+            break;
+          }
+        }
       }
-    });
+    }
+    
+    // If no materials found from structured output or none provided, fall back to text extraction
+    if (foundMaterials.size === 0) {
+      console.log('Falling back to text-based material extraction');
+      // Check for each material in the text
+      materialMap.forEach((material, name) => {
+        // Case insensitive search
+        const regex = new RegExp(`\\b${name}\\b`, 'i');
+        if (regex.test(text)) {
+          foundMaterials.add(material);
+        }
+      });
+    }
 
     return Array.from(foundMaterials);
   } catch (error) {

@@ -6,15 +6,31 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
+import { createNewSession } from './chat/hooks/useSessionManagement';
 
 export default function HomePage() {
   const [query, setQuery] = useState('');
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (query.trim()) {
-      router.push(`/home/chat?q=${encodeURIComponent(query)}`);
+    if (query.trim() && !isSubmitting) {
+      setIsSubmitting(true);
+      try {
+        // Create a new session with a descriptive title
+        const sessionTitle = `Chat about: ${query.trim().substring(0, 50)}${query.trim().length > 50 ? '...' : ''}`;
+        const session = await createNewSession(sessionTitle);
+        // Redirect to the chat page with only the session ID
+        router.push(`/home/chat?session=${session.id}`);
+      } catch (error) {
+        console.error('Error creating session:', error);
+        // Show an error message instead of falling back to the old behavior
+        alert('Failed to create a chat session. Please try again.');
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 

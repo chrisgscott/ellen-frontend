@@ -2,7 +2,48 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import OpenAI from 'openai';
 import { extractMaterials } from '../../../lib/materials';
-import { Thread } from '@/app/(perplexity-layout)/home/chat/types';
+import { Thread, Source } from '@/app/(perplexity-layout)/home/chat/types';
+
+// Define the function schema for structured outputs
+const materialExtractorFunction = {
+  type: 'function' as const,
+  function: {
+    name: 'extract_materials_and_suggestions',
+    description: 'Extract materials mentioned in the response and suggest follow-up questions',
+    parameters: {
+      type: 'object',
+      properties: {
+        materials: {
+          type: 'array',
+          description: 'Array of material names mentioned in the response',
+          items: {
+            type: 'string',
+          },
+        },
+        sources: {
+          type: 'array',
+          description: 'Array of sources referenced in the response',
+          items: {
+            type: 'object',
+            properties: {
+              title: { type: 'string' },
+              url: { type: 'string' },
+            },
+            required: ['title'],
+          },
+        },
+        suggested_questions: {
+          type: 'array',
+          description: 'Array of suggested follow-up questions',
+          items: {
+            type: 'string',
+          },
+        },
+      },
+      required: ['materials', 'suggested_questions'],
+    },
+  },
+};
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -98,149 +139,235 @@ export async function POST(req: NextRequest): Promise<Response> {
             return messages;
           });
 
-          // Call OpenAI with streaming
-          const completion = await openai.chat.completions.create({
-            model: 'gpt-4-turbo',
+          // Create assistant message in database first
+          const { data: assistantMessageData, error: assistantMsgError } = await supabase
+            .from('messages')
+            .insert({
+              session_id,
+              role: 'assistant',
+              content: '',
+            })
+            .select('id')
+            .single();
+
+          if (assistantMsgError) {
+            throw new Error(`Failed to create assistant message: ${assistantMsgError.message}`);
+          }
+
+          const assistantMessageId = assistantMessageData.id;
+
+          // Update thread with assistant message ID
+          const { error: updateThreadError } = await supabase
+            .from('threads')
+            .update({ assistant_message_id: assistantMessageId })
+            .eq('id', thread_id);
+            
+          if (updateThreadError) {
+            console.error('Error updating thread with assistant message ID:', updateThreadError);
+          }
+          
+          // Start both API calls in parallel
+          // 1. Text completion with streaming for the answer
+          const textCompletionPromise = openai.chat.completions.create({
+            model: 'gpt-4.1',
             messages: [
               {
                 role: 'system',
                 content: `You are an AI assistant for Ellen Materials. Respond to user queries about materials science and engineering.
                 When referencing materials, be specific about their properties, applications, and characteristics.
-                If you mention specific materials, they will be highlighted in the UI if they exist in our database.`,
+                Provide detailed, informative responses about materials science topics.`,
               },
               ...history.map(msg => ({
                 role: msg.role as 'user' | 'assistant',
                 content: msg.content,
               })),
-              { role: 'user' as const, content: message },
+              { role: 'user', content: message },
             ],
             stream: true,
             temperature: 0.7,
             max_tokens: 2000,
           });
-
+          
+          // 2. Structured data extraction using function calling (non-streaming)
+          const structuredCompletionPromise = openai.chat.completions.create({
+            model: 'gpt-4.1',
+            messages: [
+              {
+                role: 'system',
+                content: `Extract materials, sources, and suggested follow-up questions from this conversation.
+                Always use the extract_materials_and_suggestions function to provide structured data.`,
+              },
+              ...history.map(msg => ({
+                role: msg.role as 'user' | 'assistant',
+                content: msg.content,
+              })),
+              { role: 'user', content: message },
+            ],
+            tools: [materialExtractorFunction],
+            tool_choice: { type: "function" as const, function: { name: "extract_materials_and_suggestions" } },
+            temperature: 0.7,
+            max_tokens: 1000,
+          });
+          
+          // Process the text completion stream while the structured data is being generated
+          const textCompletion = await textCompletionPromise;
           let fullResponse = '';
-          let assistantMessageId: string | null = null;
-
-          // Process the streaming response
-          for await (const chunk of completion) {
-            const content = chunk.choices[0]?.delta?.content || '';
-            if (content) {
+          for await (const chunk of textCompletion) {
+            if (chunk.choices[0]?.delta?.content) {
+              const content = chunk.choices[0].delta.content;
               fullResponse += content;
-
-              // Send token to client
-              const payload = JSON.stringify({
+              
+              // Stream token to client
+              const tokenPayload = JSON.stringify({
                 type: 'token',
                 content,
               });
-              controller.enqueue(encoder.encode(`${payload}\n`));
-
-              // If this is the first chunk, create the assistant message in the database
-              if (!assistantMessageId) {
-                const { data: assistantData, error: assistantError } = await supabase
-                  .from('messages')
-                  .insert({
-                    session_id,
-                    role: 'assistant',
-                    content: content, // Initial content
-                  })
-                  .select('id')
-                  .single();
-
-                if (assistantError) {
-                  console.error('Error creating assistant message:', assistantError);
-                  throw new Error(`Failed to create assistant message: ${assistantError.message}`);
-                }
-
-                assistantMessageId = assistantData.id;
-                
-                // Update thread with assistant message ID
-                const { error: updateThreadError } = await supabase
-                  .from('threads')
-                  .update({ assistant_message_id: assistantMessageId })
-                  .eq('id', thread_id);
-                  
-                if (updateThreadError) {
-                  console.error('Error updating thread with assistant message ID:', updateThreadError);
-                }
-              }
+              controller.enqueue(encoder.encode(`${tokenPayload}\n`));
             }
           }
-
+          
           // Update the assistant message with the full response
-          if (assistantMessageId) {
-            const { error: updateError } = await supabase
-              .from('messages')
-              .update({ content: fullResponse })
-              .eq('id', assistantMessageId);
+          await supabase
+            .from('messages')
+            .update({ content: fullResponse })
+            .eq('id', assistantMessageId);
+          
+          // Get the structured completion result (which should be ready by now or soon)
+          const structuredCompletion = await structuredCompletionPromise;
 
-            if (updateError) {
-              console.error('Error updating assistant message:', updateError);
+          // Process the structured completion to extract data
+          let functionCallBuffer = '';
+          let extractedData: { materials: string[], sources: Source[], suggested_questions: string[] } | null = null;
+          
+          // Get the function call data from the non-streaming response
+          if (structuredCompletion.choices[0]?.message?.tool_calls?.[0]?.function) {
+            const toolCall = structuredCompletion.choices[0].message.tool_calls[0];
+            functionCallBuffer = toolCall.function.arguments || '';
+            
+            try {
+              extractedData = JSON.parse(functionCallBuffer);
+              console.log('Successfully parsed function call data:', extractedData);
+            } catch (err) {
+              console.error('Error parsing function call data:', err);
             }
           }
 
-          // Extract and process materials mentioned in the response
-          const materials = await extractMaterials(fullResponse);
-          if (materials && materials.length > 0) {
-            // Update thread with materials
-            const { error: materialsError } = await supabase
-              .from('threads')
-              .update({ related_materials: materials })
-              .eq('id', thread_id);
+          // Assistant message already updated during text streaming
 
-            if (materialsError) {
-              console.error('Error updating thread with materials:', materialsError);
+          // Process materials from function call data
+          if (extractedData && extractedData.materials && extractedData.materials.length > 0) {
+            // Deduplicate materials
+            const uniqueMaterials = [...new Set(extractedData.materials)];
+            
+            // Look up materials in the database
+            const materials = await extractMaterials(fullResponse, uniqueMaterials);
+            
+            if (materials && materials.length > 0) {
+              // Update thread with materials
+              await supabase
+                .from('threads')
+                .update({ related_materials: materials })
+                .eq('id', thread_id);
+
+              // Send materials to client
+              const materialsPayload = JSON.stringify({
+                type: 'materials',
+                content: materials,
+              });
+              controller.enqueue(encoder.encode(`${materialsPayload}\n`));
             }
+          } else {
+            // Fallback to text-based material extraction if function call didn't provide materials
+            const materials = await extractMaterials(fullResponse);
+            if (materials && materials.length > 0) {
+              // Update thread with materials
+              await supabase
+                .from('threads')
+                .update({ related_materials: materials })
+                .eq('id', thread_id);
 
-            // Send materials to client
-            const materialsPayload = JSON.stringify({
-              type: 'materials',
-              content: materials,
-            });
-            controller.enqueue(encoder.encode(`${materialsPayload}\n`));
+              // Send materials to client
+              const materialsPayload = JSON.stringify({
+                type: 'materials',
+                content: materials,
+              });
+              controller.enqueue(encoder.encode(`${materialsPayload}\n`));
+            }
           }
 
-          // Generate suggested follow-up questions
-          const suggestionsResponse = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo',
-            messages: [
-              {
-                role: 'system' as const,
-                content: 'Generate 3 short, relevant follow-up questions based on the conversation. Return them as a JSON array of strings.',
-              },
-              { role: 'user' as const, content: `User query: ${message}\nYour response: ${fullResponse}` },
-            ],
-            response_format: { type: 'json_object' },
-            temperature: 0.7,
-          });
+          // Process sources from function call data
+          if (extractedData && extractedData.sources && extractedData.sources.length > 0) {
+            try {
+              // Update thread with sources
+              await supabase
+                .from('threads')
+                .update({ sources: extractedData.sources })
+                .eq('id', thread_id);
 
-          let suggestions: string[] = [];
-          try {
-            const suggestionsContent = suggestionsResponse.choices[0]?.message?.content || '{"questions":[]}';
-            const parsedSuggestions = JSON.parse(suggestionsContent);
-            suggestions = parsedSuggestions.questions || [];
-          } catch (error) {
-            console.error('Error parsing suggestions:', error);
-            suggestions = [];
+              // Send sources to client
+              const sourcesPayload = JSON.stringify({
+                type: 'sources',
+                content: extractedData.sources,
+              });
+              controller.enqueue(encoder.encode(`${sourcesPayload}\n`));
+            } catch (err) {
+              console.error('Error processing sources:', err);
+            }
           }
 
-          if (suggestions.length > 0) {
+          // Process suggested questions from function call data
+          if (extractedData && extractedData.suggested_questions && extractedData.suggested_questions.length > 0) {
             // Update thread with suggestions
-            const { error: suggestionsError } = await supabase
+            await supabase
               .from('threads')
-              .update({ suggested_questions: suggestions })
+              .update({ suggested_questions: extractedData.suggested_questions })
               .eq('id', thread_id);
-
-            if (suggestionsError) {
-              console.error('Error updating thread with suggestions:', suggestionsError);
-            }
 
             // Send suggestions to client
             const suggestionsPayload = JSON.stringify({
               type: 'suggestions',
-              content: suggestions,
+              content: extractedData.suggested_questions,
             });
             controller.enqueue(encoder.encode(`${suggestionsPayload}\n`));
+          } else {
+            // Fallback: Generate suggested follow-up questions if not provided in function call
+            const suggestionsResponse = await openai.chat.completions.create({
+              model: 'gpt-4.1-mini',
+              messages: [
+                {
+                  role: 'system' as const,
+                  content: 'Generate 3 short, relevant follow-up questions based on the conversation. Return them as a JSON array of strings.',
+                },
+                { role: 'user' as const, content: `User query: ${message}\nYour response: ${fullResponse}` },
+              ],
+              response_format: { type: 'json_object' },
+              temperature: 0.7,
+            });
+
+            let suggestions: string[] = [];
+            try {
+              const suggestionsContent = suggestionsResponse.choices[0]?.message?.content || '{"questions":[]}';
+              const parsedSuggestions = JSON.parse(suggestionsContent);
+              suggestions = parsedSuggestions.questions || [];
+            } catch (err) {
+              console.error('Error parsing suggestions:', err);
+              suggestions = [];
+            }
+
+            if (suggestions.length > 0) {
+              // Update thread with suggestions
+              await supabase
+                .from('threads')
+                .update({ suggested_questions: suggestions })
+                .eq('id', thread_id);
+
+              // Send suggestions to client
+              const suggestionsPayload = JSON.stringify({
+                type: 'suggestions',
+                content: suggestions,
+              });
+              controller.enqueue(encoder.encode(`${suggestionsPayload}\n`));
+            }
           }
 
           // Close the stream
