@@ -1,6 +1,8 @@
 'use client';
 
 import React from "react";
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -166,6 +168,7 @@ export const NewsFeedSidebar = ({
   onItemClick
 }: NewsFeedSidebarProps) => {
   const queryClient = useQueryClient();
+  const pathname = usePathname();
   const { data: newsItems, isLoading, error, refetch } = useNewsData(apiEndpoint);
   const [hidingItems, setHidingItems] = React.useState<Set<number>>(new Set());
 
@@ -282,12 +285,11 @@ export const NewsFeedSidebar = ({
         <div className="p-4 border-t border-border bg-muted/50 shrink-0">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>{newsItems?.length || 0} articles</span>
-            <Button 
-              variant="link" 
-              className="text-primary hover:text-primary/80 transition-colors font-medium p-0 h-auto"
-            >
-              View all news
-            </Button>
+            {pathname !== '/home/news' && (
+              <Link href="/home/news" className="text-primary hover:text-primary/80 transition-colors font-medium p-0 h-auto text-sm">
+                View all news
+              </Link>
+            )}
           </div>
         </div>
       )}
