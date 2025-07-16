@@ -80,6 +80,44 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Query classification for web search
+const classifyQuery = (query: string): { needsWebSearch: boolean; searchModel: string | null; searchReason: string } => {
+  const queryLower = query.toLowerCase();
+  
+  // Keywords that indicate need for current/real-time information
+  const currentKeywords = [
+    'current', 'latest', 'recent', 'today', 'now', 'this year', '2024', '2025',
+    'price', 'cost', 'market', 'trading', 'stock', 'commodity', 'valued', 'worth', 'deal',
+    'news', 'announcement', 'breaking', 'update', 'development', 'partnership',
+    'shortage', 'supply chain', 'disruption', 'crisis', 'contract', 'agreement',
+    'sanctions', 'trade war', 'geopolitical', 'conflict', 'investment', 'funding',
+    'acquisition', 'merger', 'financial', 'revenue', 'earnings', 'quarterly'
+  ];
+  
+  // Check if query contains current/real-time indicators
+  const matchedKeywords = currentKeywords.filter(keyword => queryLower.includes(keyword));
+  const hasCurrentKeywords = matchedKeywords.length > 0;
+  
+  if (hasCurrentKeywords) {
+    // Determine which search model to use based on complexity
+    // Only consider truly complex analytical queries, not simple "how much" or "what" questions
+    const complexKeywords = ['detailed analysis', 'comprehensive', 'explain why', 'analyze', 'implications', 'impact on', 'compare'];
+    const isComplex = complexKeywords.some(keyword => queryLower.includes(keyword));
+    
+    return {
+      needsWebSearch: true,
+      searchModel: isComplex ? 'gpt-4o-search-preview' : 'gpt-4o-mini-search-preview',
+      searchReason: `Query contains keywords: [${matchedKeywords.join(', ')}] - ${isComplex ? 'Complex analysis' : 'Simple lookup'} requiring current information`
+    };
+  }
+  
+  return {
+    needsWebSearch: false,
+    searchModel: null,
+    searchReason: 'Query can be answered with existing knowledge base'
+  };
+};
+
 // Multi-namespace Pinecone search function
 const searchPineconeNamespace = async (query: string, namespace: PineconeNamespace): Promise<PineconeDocument[]> => {
   try {
@@ -432,6 +470,10 @@ export async function POST(req: NextRequest): Promise<Response> {
             console.error('🚀 API ROUTE: Error updating thread with assistant message ID:', updateThreadError);
           }
 
+          // Classify query to determine if web search is needed
+          const queryClassification = classifyQuery(message);
+          console.log('🔍 QUERY CLASSIFICATION:', queryClassification);
+          
           // RAG: Search both Pinecone and Supabase for relevant context
           console.log('🔍 RAG: Starting hybrid context retrieval for query:', message.substring(0, 100));
           
@@ -534,13 +576,28 @@ export async function POST(req: NextRequest): Promise<Response> {
 
           // Start both API calls in parallel
           console.log('🚀 API ROUTE: Starting parallel OpenAI API calls with RAG context');
-          // 1. Text completion with streaming for the answer (now with RAG context)
-          const textCompletionPromise = openai.chat.completions.create({
-            model: 'gpt-4.1',
-            messages: [
-              {
-                role: 'system',
-                content: `You are an AI assistant for Ellen Materials with access to a comprehensive materials science database.
+          
+          // Prepare base messages
+          const baseMessages = [
+            {
+              role: 'system' as const,
+              content: queryClassification.needsWebSearch 
+                ? `You are an AI assistant for Ellen Materials with access to both a comprehensive materials science database and real-time web search.
+                
+                INSTRUCTIONS:
+                - Use both the provided context from documents/materials database AND current web information to answer questions accurately
+                - When referencing materials, cite specific properties, applications, and characteristics from both sources
+                - Prioritize current/real-time information for prices, market conditions, and recent developments
+                - Use historical context from the database for technical specifications and established knowledge
+                - Be specific about material properties, applications, and engineering characteristics
+                - Clearly distinguish between historical context and current information
+                
+                CONTEXT SOURCES:
+                - [DOC-X]: Research documents, reports, and technical literature
+                - [VEC-X]: Materials vector database entries with properties and applications
+                - [DB-X]: Structured materials database with specifications and summaries
+                - [WEB]: Current web search results with real-time information`
+                : `You are an AI assistant for Ellen Materials with access to a comprehensive materials science database.
                 
                 INSTRUCTIONS:
                 - Use the provided context from documents and materials database to answer questions accurately
@@ -553,17 +610,43 @@ export async function POST(req: NextRequest): Promise<Response> {
                 - [DOC-X]: Research documents, reports, and technical literature
                 - [VEC-X]: Materials vector database entries with properties and applications
                 - [DB-X]: Structured materials database with specifications and summaries`,
-              },
-              ...history.map(msg => ({
-                role: msg.role as 'user' | 'assistant',
-                content: msg.content,
-              })),
-              { role: 'user', content: `${message}${contextPrompt}` },
-            ],
-            stream: true,
-            temperature: 0.7,
-            max_tokens: 2000,
-          });
+            },
+            ...history.map(msg => ({
+              role: msg.role as 'user' | 'assistant',
+              content: msg.content,
+            })),
+            { role: 'user' as const, content: `${message}${contextPrompt}` },
+          ];
+          
+          // 1. Text completion with streaming for the answer (with optional web search)
+          const textCompletionConfig = {
+            model: queryClassification.needsWebSearch ? queryClassification.searchModel! : 'gpt-4.1',
+            messages: baseMessages,
+            stream: true as const,
+            // Only add temperature and max_tokens for non-search models
+            ...(queryClassification.needsWebSearch ? {} : {
+              temperature: 0.7,
+              max_tokens: 2000,
+            }),
+            ...(queryClassification.needsWebSearch && {
+              web_search_options: {
+                search_context_size: 'medium' as const,
+                user_location: {
+                  type: 'approximate' as const,
+                  approximate: {
+                    country: 'US',
+                    timezone: 'America/Denver'
+                  }
+                }
+              }
+            })
+          };
+          
+          if (queryClassification.needsWebSearch) {
+            console.log('🌐 WEB SEARCH: Using', queryClassification.searchModel, 'with web search');
+          }
+          
+          const textCompletionPromise = openai.chat.completions.create(textCompletionConfig);
           
           // 2. Structured data extraction using function calling (non-streaming) - now with RAG context
           const structuredCompletionPromise = openai.chat.completions.create({
@@ -579,6 +662,7 @@ export async function POST(req: NextRequest): Promise<Response> {
                 - For [DOC-X] references: Use the document title/filename if available, or create descriptive titles like "Technical Report on [Topic]" or "Research Study: [Subject]"
                 - For [VEC-X] references: Use format "Materials Database - [Material Name] Properties" 
                 - For [DB-X] references: Use format "Ellen Materials Database - [Material Name]"
+                - For [WEB] references: Use the actual website titles and URLs from web search results
                 - Always provide descriptive, user-friendly titles rather than generic references
                 - If multiple sources cover the same topic, consolidate them appropriately
                 
@@ -601,6 +685,8 @@ export async function POST(req: NextRequest): Promise<Response> {
           const textCompletion = await textCompletionPromise;
           let fullResponse = '';
           let tokenCount = 0;
+          const webCitations: Array<{ type: string; url?: string; title?: string }> = [];
+          
           for await (const chunk of textCompletion) {
             if (chunk.choices[0]?.delta?.content) {
               const content = chunk.choices[0].delta.content;
@@ -614,6 +700,16 @@ export async function POST(req: NextRequest): Promise<Response> {
               });
               controller.enqueue(encoder.encode(`${tokenPayload}\n`));
             }
+            
+            // Capture web search citations if present (search models only)
+            if (queryClassification.needsWebSearch && (chunk as any).choices[0]?.delta?.annotations) {
+              webCitations.push(...(chunk as any).choices[0].delta.annotations);
+            }
+          }
+          
+          // Log web citations if any were found
+          if (webCitations.length > 0) {
+            console.log('🌐 WEB SEARCH: Found citations:', webCitations.length);
           }
           
           console.log('🚀 API ROUTE: Text streaming complete:', {
@@ -715,19 +811,32 @@ export async function POST(req: NextRequest): Promise<Response> {
             }
           }
 
-          // Process sources from function call data
-          if (extractedData && extractedData.sources && extractedData.sources.length > 0) {
+          // Process sources from function call data and web citations
+          let allSources = extractedData?.sources || [];
+          
+          // Add web citations as sources if any were found
+          if (webCitations.length > 0) {
+            const webSources = webCitations.map(citation => ({
+              title: citation.title || 'Web Search Result',
+              url: citation.url || '',
+              type: 'web' as const
+            }));
+            allSources = [...allSources, ...webSources];
+            console.log('🌐 WEB SEARCH: Added', webSources.length, 'web citations to sources');
+          }
+          
+          if (allSources.length > 0) {
             try {
-              // Update thread with sources
+              // Update thread with all sources (RAG + web)
               await supabase
                 .from('threads')
-                .update({ sources: extractedData.sources })
+                .update({ sources: allSources })
                 .eq('id', thread_id);
 
               // Send sources to client
               const sourcesPayload = JSON.stringify({
                 type: 'sources',
-                content: extractedData.sources,
+                content: allSources,
               });
               controller.enqueue(encoder.encode(`${sourcesPayload}\n`));
             } catch (err) {
