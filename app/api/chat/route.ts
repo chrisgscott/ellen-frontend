@@ -306,11 +306,23 @@ export async function POST(req: NextRequest): Promise<Response> {
                 .eq('id', thread_id);
               
               // Send materials to client
-              const materialsPayload = JSON.stringify({
-                type: 'materials',
-                content: materials,
-              });
-              controller.enqueue(encoder.encode(`${materialsPayload}\n`));
+              try {
+                console.log('🧪 API ROUTE: Sending materials to client:', materials.length, 'materials');
+                const materialsPayload = JSON.stringify({
+                  type: 'materials',
+                  content: materials,
+                });
+                console.log('🧪 API ROUTE: Materials payload length:', materialsPayload.length);
+                controller.enqueue(encoder.encode(`${materialsPayload}\n`));
+              } catch (jsonError) {
+                console.error('❌ API ROUTE: Error serializing materials:', jsonError);
+                // Send error instead of crashing
+                const errorPayload = JSON.stringify({
+                  type: 'error',
+                  content: 'Failed to serialize materials data'
+                });
+                controller.enqueue(encoder.encode(`${errorPayload}\n`));
+              }
             }
           } else {
             console.log('🚀 API ROUTE: No structured materials, using fallback text extraction');
@@ -323,11 +335,23 @@ export async function POST(req: NextRequest): Promise<Response> {
                 .update({ related_materials: materials })
                 .eq('id', thread_id);
               
-              const materialsPayload = JSON.stringify({
-                type: 'materials',
-                content: materials,
-              });
-              controller.enqueue(encoder.encode(`${materialsPayload}\n`));
+              try {
+                console.log('🧪 API ROUTE: Sending fallback materials to client:', materials.length, 'materials');
+                const materialsPayload = JSON.stringify({
+                  type: 'materials',
+                  content: materials,
+                });
+                console.log('🧪 API ROUTE: Fallback materials payload length:', materialsPayload.length);
+                controller.enqueue(encoder.encode(`${materialsPayload}\n`));
+              } catch (jsonError) {
+                console.error('❌ API ROUTE: Error serializing fallback materials:', jsonError);
+                // Send error instead of crashing
+                const errorPayload = JSON.stringify({
+                  type: 'error',
+                  content: 'Failed to serialize materials data'
+                });
+                controller.enqueue(encoder.encode(`${errorPayload}\n`));
+              }
             } else {
               console.log('🚀 API ROUTE: No materials found in fallback extraction');
             }

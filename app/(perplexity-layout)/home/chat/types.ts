@@ -23,10 +23,13 @@ export interface Source {
   snippet?: string;
 }
 
-// Material reference from assistant responses
+// Material reference from assistant responses - matches database structure
 export interface Material {
   id: string;
   material: string; // Name of the material
+  short_summary: string;
+  symbol?: string; // Chemical symbol (e.g. "Ce", "Co")
+  material_card_color?: string; // Hex color for the card
   description?: string;
   url?: string;
 }

@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import { RelatedMaterialsCard } from '@/components/related-materials-card';
 import { useSession } from './hooks/useSession';
 import { clearInitialQuery } from './hooks/useSessionManagement';
 
@@ -213,20 +215,25 @@ export default function ChatPage() {
                 </div>
               )}
               
-              {/* Materials */}
+              {/* Related Materials Carousel */}
               {thread.related_materials && thread.related_materials.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Related Materials</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {thread.related_materials.map((material, index) => (
-                      <span 
-                        key={index}
-                        className="inline-block bg-purple-100 text-purple-800 text-xs px-3 py-1 rounded-full font-medium"
-                      >
-                        {material.material}
-                      </span>
-                    ))}
-                  </div>
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold mb-4">Related Materials</h3>
+                  <Carousel className="w-full">
+                    <CarouselContent className="-ml-2 md:-ml-4">
+                      {thread.related_materials.map((material, index) => (
+                        <CarouselItem key={material.id || index} className="pl-2 md:pl-4 basis-auto">
+                          <RelatedMaterialsCard material={material} />
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                    {thread.related_materials.length > 1 && (
+                      <>
+                        <CarouselPrevious className="-left-4" />
+                        <CarouselNext className="-right-4" />
+                      </>
+                    )}
+                  </Carousel>
                 </div>
               )}
               
