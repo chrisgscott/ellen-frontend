@@ -70,7 +70,7 @@ const materialExtractorFunction = {
           },
         },
       },
-      required: ['materials', 'suggested_questions'],
+      required: ['materials', 'sources', 'suggested_questions'],
     },
   },
 };
@@ -571,9 +571,18 @@ export async function POST(req: NextRequest): Promise<Response> {
             messages: [
               {
                 role: 'system',
-                content: `Extract materials mentioned in the response and suggest follow-up questions.
-                Focus on identifying specific materials, alloys, composites, or chemical compounds discussed.
-                Use the provided context to identify relevant materials and generate contextual follow-up questions.`,
+                content: `Extract materials mentioned in the response, identify sources referenced, and suggest follow-up questions.
+                
+                MATERIALS: Focus on identifying specific materials, alloys, composites, or chemical compounds discussed.
+                
+                SOURCES: Extract sources from the context that were referenced in the response. Create meaningful source titles:
+                - For [DOC-X] references: Use the document title/filename if available, or create descriptive titles like "Technical Report on [Topic]" or "Research Study: [Subject]"
+                - For [VEC-X] references: Use format "Materials Database - [Material Name] Properties" 
+                - For [DB-X] references: Use format "Ellen Materials Database - [Material Name]"
+                - Always provide descriptive, user-friendly titles rather than generic references
+                - If multiple sources cover the same topic, consolidate them appropriately
+                
+                QUESTIONS: Generate contextual follow-up questions based on the provided context.`,
               },
               ...history.map(msg => ({
                 role: msg.role as 'user' | 'assistant',
