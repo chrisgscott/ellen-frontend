@@ -1,14 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Newspaper, FlaskConical, Folders } from 'lucide-react';
+import { Search, Newspaper, FlaskConical, Folders, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
 import { createNewSession } from './chat/hooks/useSessionManagement';
 import { createClient } from '@/lib/supabase/client';
+
+const mockPricingData = [
+  { name: 'Lithium Carbonate', price: '13,450.50', change: '+25.50', trend: 'up', unit: 'USD/tonne' },
+  { name: 'Cobalt Metal', price: '28,750.00', change: '-150.00', trend: 'down', unit: 'USD/tonne' },
+  { name: 'Neodymium', price: '65.20', change: '+0.85', trend: 'up', unit: 'USD/kg' },
+  { name: 'Gallium', price: '350.75', change: '+5.25', trend: 'up', unit: 'USD/kg' },
+  { name: 'Graphite', price: '850.00', change: '-12.50', trend: 'down', unit: 'USD/tonne' },
+];
 
 export default function HomePage() {
   const [query, setQuery] = useState('');
@@ -109,33 +117,60 @@ export default function HomePage() {
 
       {/* Navigation Cards */}
       <div className="mt-12 w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Link href="/home/news">
-          <Card className="hover:bg-muted/50 transition-colors">
-            <CardHeader>
-              <Newspaper className="h-6 w-6 mb-2 text-primary" />
-              <CardTitle>Recent News</CardTitle>
-              <CardDescription>Catch up on the latest market-moving updates.</CardDescription>
-            </CardHeader>
+        <Link href="/home/news" className="block">
+          <Card className="hover:bg-muted/50 transition-colors h-full">
+            <div className="p-3 flex items-center gap-3">
+              <Newspaper className="h-6 w-6 text-primary flex-shrink-0" />
+              <div>
+                <p className="font-medium">Recent News</p>
+                <p className="text-xs text-muted-foreground">Latest market updates.</p>
+              </div>
+            </div>
           </Card>
         </Link>
-        <Link href="/home/research">
-          <Card className="hover:bg-muted/50 transition-colors">
-            <CardHeader>
-              <FlaskConical className="h-6 w-6 mb-2 text-primary" />
-              <CardTitle>Research Materials</CardTitle>
-              <CardDescription>Explore intelligence reports on critical materials.</CardDescription>
-            </CardHeader>
+        <Link href="/home/research" className="block">
+          <Card className="hover:bg-muted/50 transition-colors h-full">
+            <div className="p-3 flex items-center gap-3">
+              <FlaskConical className="h-6 w-6 text-primary flex-shrink-0" />
+              <div>
+                <p className="font-medium">Research Materials</p>
+                <p className="text-xs text-muted-foreground">Explore intel reports.</p>
+              </div>
+            </div>
           </Card>
         </Link>
-        <Link href="/home/spaces">
-          <Card className="hover:bg-muted/50 transition-colors">
-            <CardHeader>
-              <Folders className="h-6 w-6 mb-2 text-primary" />
-              <CardTitle>Your Spaces</CardTitle>
-              <CardDescription>Access your saved research and collections.</CardDescription>
-            </CardHeader>
+        <Link href="/home/spaces" className="block">
+          <Card className="hover:bg-muted/50 transition-colors h-full">
+            <div className="p-3 flex items-center gap-3">
+              <Folders className="h-6 w-6 text-primary flex-shrink-0" />
+              <div>
+                <p className="font-medium">Your Spaces</p>
+                <p className="text-xs text-muted-foreground">Access your collections.</p>
+              </div>
+            </div>
           </Card>
         </Link>
+      </div>
+
+      {/* Live Market Prices */}
+      <div className="mt-8 w-full max-w-5xl">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          {mockPricingData.map((item, index) => (
+            <Card key={index} className="p-3 flex flex-col justify-between bg-muted/25 hover:bg-muted/50 transition-colors cursor-pointer">
+              <div>
+                <p className="font-medium text-xs text-foreground">{item.name}</p>
+                <p className="text-xs text-muted-foreground">{item.unit}</p>
+              </div>
+              <div className="mt-3 text-right">
+                <p className="text-xl font-bold font-mono">{item.price}</p>
+                <div className={`flex items-center justify-end gap-1 text-xs font-mono ${item.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
+                  {item.trend === 'up' ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                  <span>{item.change}</span>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
       </div>
     </div>
   );

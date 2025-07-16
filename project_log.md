@@ -23,6 +23,16 @@
 
 ---
 
+[2025-07-16 12:40] — Added a subtle background color to the market price ticker cards to visually differentiate them from the navigation cards.
+
+[2025-07-16 12:39] — Reduced the size of all home page cards (navigation and market prices) by approximately one-third for a more compact and refined layout.
+
+[2025-07-16 12:38] — Refactored the home page navigation cards to a more compact, horizontal style to reduce vertical space and improve the overall layout.
+
+[2025-07-16 12:36] — Refactored the 'Live Market Prices' section into a compact, widget-style row of cards to improve layout and keep the focus on the main chat input.
+
+[2025-07-16 12:34] — Added a mock 'Live Market Prices' section to the home page to simulate real-time data and demonstrate future Fastmarkets integration capabilities.
+
 [2025-07-16 12:30] — Standardized the placeholder styles on the research page to match the news page, ensuring consistent Lottie animation size and text spacing.
 
 [2025-07-16 12:27] — Added a Lottie animation to the news page placeholder for consistency with the research page, improving the UI when no article is selected.
