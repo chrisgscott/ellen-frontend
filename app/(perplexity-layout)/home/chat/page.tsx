@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { Search, ChevronRight } from 'lucide-react';
@@ -26,6 +26,7 @@ export default function ChatPage() {
   });
   
   const [newQuery, setNewQuery] = useState('');
+  const threadRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   
   const {
     session,
@@ -33,6 +34,40 @@ export default function ChatPage() {
     error,
     sendMessage
   } = useSession(sessionId || undefined, projectId || undefined);
+  
+  // Effect to scroll to latest thread when NEW threads are added (not during streaming)
+  useEffect(() => {
+    if (session?.threads && session.threads.length > 0) {
+      const latestThread = session.threads[session.threads.length - 1];
+      const threadId = latestThread.thread_id || `thread-${session.threads.length - 1}`;
+      
+      console.log('🧵 THREAD COUNT CHANGED - Latest thread ID:', threadId);
+      console.log('🧵 Total threads:', session.threads.length);
+      
+      // Only scroll if this is a genuinely new thread (has user message but no/minimal assistant response)
+      const isNewThread = latestThread.user_message && (!latestThread.assistant_message || latestThread.assistant_message.content.length < 50);
+      
+      if (isNewThread) {
+        console.log('🎯 NEW THREAD DETECTED - SCROLLING TO:', threadId);
+        // Scroll to the latest thread
+        setTimeout(() => {
+          const threadElement = threadRefs.current[threadId];
+          if (threadElement) {
+            console.log('🎯 EXECUTING SCROLL TO LATEST THREAD:', threadId);
+            threadElement.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'start',
+              inline: 'nearest'
+            });
+          } else {
+            console.log('🔴 Thread element not found for ID:', threadId);
+          }
+        }, 100); // Small delay to ensure DOM is updated
+      } else {
+        console.log('🔴 EXISTING THREAD UPDATE - NOT SCROLLING (streaming in progress)');
+      }
+    }
+  }, [session?.threads?.length]); // Only trigger when thread COUNT changes
   
   // Get initial query from session metadata
   const initialQuery = session?.metadata?.initial_query as string | undefined;
@@ -139,8 +174,14 @@ export default function ChatPage() {
     <div className="flex flex-col h-screen max-w-4xl mx-auto">
       {session?.threads && session.threads.length > 0 ? (
         <>
-          {session.threads.map((thread, index) => (
-            <div key={thread.thread_id || `thread-${index}`} className="flex flex-col flex-1">
+          {session.threads.map((thread, index) => {
+            const threadId = thread.thread_id || `thread-${index}`;
+            return (
+              <div 
+                key={threadId} 
+                ref={(el) => { threadRefs.current[threadId] = el; }}
+                className="flex flex-col flex-1"
+              >
               {/* Sticky Header - User Query */}
               <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-4">
                 <h2 className="text-2xl font-semibold leading-tight" style={{ color: '#1D638B' }}>
@@ -245,7 +286,10 @@ export default function ChatPage() {
                     {thread.suggested_questions.map((question, index) => (
                       <button
                         key={index}
-                        onClick={() => {
+                        onClick={(e) => {
+                          console.log('🔴 FOLLOW-UP CLICKED:', question);
+                          e.preventDefault();
+                          e.stopPropagation();
                           sendMessage(question);
                         }}
                         className="w-full text-sm bg-gray-50 hover:bg-gray-100 text-gray-700 px-4 py-3 rounded-lg border border-gray-200 transition-colors text-left flex items-center gap-2"
@@ -259,7 +303,8 @@ export default function ChatPage() {
               )}
               </div>
             </div>
-          ))}
+            );
+          })}
           
           {/* Floating Input Form */}
           <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 w-full max-w-4xl px-6 z-20">
