@@ -1,21 +1,41 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
 import { createNewSession } from './chat/hooks/useSessionManagement';
+import { createClient } from '@/lib/supabase/client';
 
 export default function HomePage() {
   const [query, setQuery] = useState('');
+  const [firstName, setFirstName] = useState<string | null>(null);
   const router = useRouter();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   console.log('🏠 HOME PAGE: Component rendered with query:', query);
 
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .single();
+        if (profile?.full_name) {
+          setFirstName(profile.full_name.split(' ')[0]);
+        }
+      }
+    };
+    fetchProfile();
+  }, []);
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('🏠 HOME PAGE: Form submitted with query:', query.trim());
@@ -55,8 +75,8 @@ export default function HomePage() {
       </div>
       {/* Logo and Title */}
       <div className="mb-8 text-center">
-        <h1 className="text-4xl font-medium text-foreground mb-2">Ask ELLEN...</h1>
-        <p className="text-muted-foreground">Your materials intelligence assistant</p>
+        <h1 className="text-4xl font-bold text-gray-800 mb-3">Hello, {firstName || 'there'}.</h1>
+        <p className="text-lg text-gray-500">I&apos;m ELLEN, your critical materials AI analyst. How can I help you today?</p>
       </div>
 
       {/* Search Form */}
@@ -85,6 +105,8 @@ export default function HomePage() {
           </div>
         </form>
       </div>
+
+
     </div>
   );
 }

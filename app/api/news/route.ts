@@ -43,10 +43,15 @@ export async function GET() {
       id: item.id,
       headline: cleanHtmlText(item.title) || 'No title',
       snippet: cleanHtmlText(item.snippet) || 'No description available',
-      category: 'Strategic Materials', // Default category since column doesn't exist
+      category: 'Strategic Materials',
       link: item.link || '#',
       commentary: item.implications || item.assessment || item.recommended_action || 'No commentary available',
-      publishedAt: item.created_at || new Date().toISOString()
+      publishedAt: item.created_at || new Date().toISOString(),
+      assessment: item.assessment || '',
+      implications: item.implications || '',
+      recommended_action: item.recommended_action || '',
+      estimated_impact: item.estimated_impact || '',
+      confidence_score: item.confidence_score || 0,
     })) || [];
 
     return NextResponse.json(transformedNews);

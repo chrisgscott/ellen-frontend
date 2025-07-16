@@ -26,11 +26,15 @@ export interface NewsItem {
   link: string;
   commentary: string;
   publishedAt: string | Date;
+  assessment: string;
+  implications: string;
+  recommended_action: string;
+  estimated_impact: string;
+  confidence_score: number;
 }
 
 export interface NewsFeedSidebarProps {
   apiEndpoint?: string;
-  maxHeight?: string;
   className?: string;
   showFooter?: boolean;
   onItemClick?: (item: NewsItem) => void;
@@ -155,13 +159,12 @@ const useNewsData = (apiEndpoint: string) => {
   });
 };
 
-export function NewsFeedSidebar({
+export const NewsFeedSidebar = ({
   apiEndpoint = '/api/news',
-  maxHeight = '600px',
   className = '',
   showFooter = true,
   onItemClick
-}: NewsFeedSidebarProps) {
+}: NewsFeedSidebarProps) => {
   const queryClient = useQueryClient();
   const { data: newsItems, isLoading, error, refetch } = useNewsData(apiEndpoint);
   const [hidingItems, setHidingItems] = React.useState<Set<number>>(new Set());
@@ -224,9 +227,9 @@ export function NewsFeedSidebar({
   }
 
   return (
-    <div className={`w-full max-w-sm mx-auto overflow-hidden ${className}`}>
+    <div className={`w-full h-full flex flex-col ${className}`}>
       {/* Header */}
-      <div className="p-6 bg-card">
+      <div className="p-6 bg-card shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
@@ -250,7 +253,7 @@ export function NewsFeedSidebar({
       </div>
 
       {/* Scrollable Feed Area */}
-      <ScrollArea style={{ height: maxHeight }} className="bg-card">
+      <ScrollArea className="bg-card flex-grow">
         <div className="p-4 space-y-4">
           {isLoading ? (
             Array.from({ length: 3 }).map((_, i) => (
@@ -276,7 +279,7 @@ export function NewsFeedSidebar({
 
       {/* Footer */}
       {showFooter && (
-        <div className="p-4 border-t border-border bg-muted/50">
+        <div className="p-4 border-t border-border bg-muted/50 shrink-0">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>{newsItems?.length || 0} articles</span>
             <Button 

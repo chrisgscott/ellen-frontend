@@ -1,14 +1,19 @@
 'use client';
 
+import { useState } from 'react';
+import { NewsFeedSidebar, NewsItem } from '@/components/newsfeed-sidebar';
+import { ArticleView } from '@/components/article-view';
+
+
+
 export default function NewsPage() {
+  const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
   return (
-    <div className="flex-1 p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-semibold mb-6">News</h1>
-        <div className="bg-muted/50 rounded-lg p-8 text-center">
-          <p className="text-muted-foreground">News content will be implemented here.</p>
-        </div>
+    <div className="flex h-full w-full">
+      <div className="w-[400px] border-r border-border overflow-y-auto">
+        <NewsFeedSidebar onItemClick={setSelectedArticle} />
       </div>
+      <ArticleView article={selectedArticle} />
     </div>
   );
 }
