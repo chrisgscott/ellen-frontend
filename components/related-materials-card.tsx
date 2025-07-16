@@ -10,7 +10,7 @@ interface RelatedMaterialsCardProps {
 export function RelatedMaterialsCard({ material }: RelatedMaterialsCardProps) {
   const symbol = material.symbol ?? `${material.material.charAt(0).toUpperCase()}${material.material.charAt(1)?.toLowerCase() ?? ''}`;
   return (
-    <Link href={`/materials/${encodeURIComponent(material.material)}`} passHref>
+    <Link href={`/materials/${encodeURIComponent(material.material)}`} target="_blank" rel="noopener noreferrer">
       <div className="min-w-[240px] max-w-[280px] h-24 flex items-center gap-4 bg-gray-100 hover:shadow-md transition-shadow cursor-pointer rounded-xl border p-4 overflow-hidden">
         {/* Element-like square */}
         <div
