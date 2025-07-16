@@ -143,7 +143,7 @@ export default function ChatPage() {
             <div key={thread.thread_id || `thread-${index}`} className="flex flex-col flex-1">
               {/* Sticky Header - User Query */}
               <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-4">
-                <h2 className="text-xl font-semibold text-gray-900 leading-tight">
+                <h2 className="text-2xl font-semibold leading-tight" style={{ color: '#1D638B' }}>
                   {thread.user_message?.content}
                 </h2>
               </div>
