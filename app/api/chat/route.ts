@@ -723,6 +723,15 @@ export async function POST(req: NextRequest): Promise<Response> {
             max_tokens: 1000,
           });
           
+          // Send initial web search indicator if needed
+          if (queryClassification.needsWebSearch) {
+            const searchIndicator = JSON.stringify({
+              type: 'search_indicator',
+              content: '🔍 Searching for up-to-date sources...'
+            });
+            controller.enqueue(encoder.encode(`${searchIndicator}\n`));
+          }
+          
           // Process the text completion stream while the structured data is being generated
           console.log('🚀 API ROUTE: Processing text completion stream');
           const textCompletion = await textCompletionPromise;

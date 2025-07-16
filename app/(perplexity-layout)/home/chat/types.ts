@@ -100,6 +100,6 @@ export interface Project {
 
 // Server-sent event payload types
 export interface SSEPayload {
-  type: 'token' | 'sources' | 'materials' | 'suggestions' | 'error';
+  type: 'token' | 'sources' | 'materials' | 'suggestions' | 'error' | 'search_indicator';
   content: string | Source[] | Material[] | string[] | Error;
 }

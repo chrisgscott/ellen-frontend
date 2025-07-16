@@ -62,8 +62,19 @@ export async function processStreamingResponse(
       const payload: SSEPayload = JSON.parse(line);
       
       switch (payload.type) {
+        case 'search_indicator':
+          // Show search indicator as initial content
+          currentContent = payload.content as string;
+          onToken(currentContent);
+          break;
+          
         case 'token':
-          currentContent += payload.content as string;
+          // For first real token after search indicator, replace the indicator
+          if (currentContent.includes('🔍 Searching for up-to-date sources...')) {
+            currentContent = payload.content as string;
+          } else {
+            currentContent += payload.content as string;
+          }
           onToken(currentContent);
           break;
           
