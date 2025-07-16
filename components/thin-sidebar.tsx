@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client'; // Added to fetch role
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { SessionLibrary } from './session-library';
 import Image from 'next/image';
 
 export function ThinSidebar() {
@@ -59,26 +61,57 @@ export function ThinSidebar() {
       {/* Navigation */}
       <div className="flex-1 flex flex-col items-center pt-4 gap-2">
         <TooltipProvider delayDuration={300}>
-          {navItems.map((item) => (
-            <Tooltip key={item.name}>
-              <TooltipTrigger asChild>
-                <Link href={item.href} passHref>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "h-10 w-10 rounded-full",
-                      pathname === item.href && "bg-accent text-accent-foreground"
-                    )}
-                  >
-                    <item.icon className="h-5 w-5" />
-                    <span className="sr-only">{item.name}</span>
-                  </Button>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="right">{item.name}</TooltipContent>
-            </Tooltip>
-          ))}
+          {navItems.map((item) => {
+            if (item.name === 'Home') {
+              return (
+                <HoverCard key={item.name} openDelay={100} closeDelay={50}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HoverCardTrigger asChild>
+                        <Link href={item.href} passHref>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              "h-10 w-10 rounded-full",
+                              pathname === item.href && "bg-accent text-accent-foreground"
+                            )}
+                          >
+                            <item.icon className="h-5 w-5" />
+                            <span className="sr-only">{item.name}</span>
+                          </Button>
+                        </Link>
+                      </HoverCardTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{item.name}</TooltipContent>
+                  </Tooltip>
+                  <HoverCardContent side="right" align="start" className="h-screen w-80 border-0 border-r p-0 rounded-none">
+                    <SessionLibrary />
+                  </HoverCardContent>
+                </HoverCard>
+              );
+            }
+            return (
+              <Tooltip key={item.name}>
+                <TooltipTrigger asChild>
+                  <Link href={item.href} passHref>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        "h-10 w-10 rounded-full",
+                        pathname === item.href && "bg-accent text-accent-foreground"
+                      )}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      <span className="sr-only">{item.name}</span>
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right">{item.name}</TooltipContent>
+              </Tooltip>
+            );
+          })}
         </TooltipProvider>
       </div>
       
@@ -105,6 +138,7 @@ export function ThinSidebar() {
               <TooltipContent side="right">Admin</TooltipContent>
             </Tooltip>
           )}
+
           <Tooltip>
             <TooltipTrigger asChild>
               <Link href="/account" passHref>
@@ -116,7 +150,6 @@ export function ThinSidebar() {
             </TooltipTrigger>
             <TooltipContent side="right">Account</TooltipContent>
           </Tooltip>
-          
           <Tooltip>
             <TooltipTrigger asChild>
               <form action="/auth/sign-out" method="post">

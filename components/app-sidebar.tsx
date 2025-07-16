@@ -78,6 +78,7 @@ export async function AppSidebar(
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
+
         </SidebarMenu>
         <SidebarSeparator className="my-2" />
         <AppSidebarNav navMain={navMain} />
