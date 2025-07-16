@@ -36,6 +36,7 @@ export default function ChatPage() {
   } = useSession(sessionId || undefined, projectId || undefined);
   
   // Effect to scroll to latest thread when NEW threads are added (not during streaming)
+    // Effect to scroll to latest thread when NEW threads are added (not during streaming)
   useEffect(() => {
     if (session?.threads && session.threads.length > 0) {
       const latestThread = session.threads[session.threads.length - 1];
@@ -184,7 +185,7 @@ export default function ChatPage() {
               >
               {/* Sticky Header - User Query */}
               <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-4">
-                <h2 className="text-2xl font-semibold leading-tight" style={{ color: '#1D638B' }}>
+                <h2 className="text-2xl font-semibold leading-tight line-clamp-2" style={{ color: '#1D638B' }}>
                   {thread.user_message?.content}
                 </h2>
               </div>

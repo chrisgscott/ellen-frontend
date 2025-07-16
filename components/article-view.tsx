@@ -2,6 +2,8 @@ import React from 'react';
 
 import { NewsItem } from './newsfeed-sidebar';
 
+import { useRouter } from 'next/navigation';
+import { createNewSession } from '@/app/(perplexity-layout)/home/chat/hooks/useSessionManagement';
 import { Button } from '@/components/ui/button';
 import ScoreIndicator from './score-indicator';
 import { ExternalLink, MessageSquare } from 'lucide-react';
@@ -11,6 +13,26 @@ interface ArticleViewProps {
 }
 
 export const ArticleView = ({ article }: ArticleViewProps) => {
+  const router = useRouter();
+
+  const handleAskEllen = async () => {
+    if (!article) return;
+
+    const prompt = `Let's discuss the following article titled "${article.headline}".\n\nHere is a summary: ${article.snippet}\n\nAI Assessment: ${article.assessment}\nPotential Implications: ${article.implications}\nRecommended Action: ${article.recommended_action}\n\nWhat are the key takeaways and what should I be most concerned about?`;
+
+    try {
+      const newSession = await createNewSession(
+        article.headline, // title
+        null, // projectId
+        prompt // initialQuery
+      );
+      router.push(`/home/chat?session=${newSession.id}`);
+    } catch (error) {
+      console.error("Failed to create session from article:", error);
+      // Optionally, add user-facing error handling here, like a toast notification.
+    }
+  };
+
   if (!article) {
     return (
       <div className="flex-1 p-8 h-full flex flex-col items-center justify-center bg-muted/20">
@@ -38,7 +60,7 @@ export const ArticleView = ({ article }: ArticleViewProps) => {
                   Read Original
                 </a>
               </Button>
-              <Button variant="default" size="sm">
+              <Button variant="default" size="sm" onClick={handleAskEllen}>
                 <MessageSquare className="w-4 h-4 mr-2" />
                 Ask ELLEN
               </Button>
