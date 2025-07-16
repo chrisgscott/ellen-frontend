@@ -723,41 +723,132 @@ export async function POST(req: NextRequest): Promise<Response> {
             max_tokens: 1000,
           });
           
-          // Send initial web search indicator if needed
+          let fullResponse = '';
+          let tokenCount = 0;
+          const webCitations: Array<{ type: string; url?: string; title?: string }> = [];
+          
           if (queryClassification.needsWebSearch) {
+            // TWO-STAGE PROCESSING FOR WEB SEARCH QUERIES
+            
+            // STAGE 1: Web Search
             const searchIndicator = JSON.stringify({
               type: 'search_indicator',
               content: '🔍 Searching for up-to-date sources...'
             });
             controller.enqueue(encoder.encode(`${searchIndicator}\n`));
-          }
-          
-          // Process the text completion stream while the structured data is being generated
-          console.log('🚀 API ROUTE: Processing text completion stream');
-          const textCompletion = await textCompletionPromise;
-          let fullResponse = '';
-          let tokenCount = 0;
-          const webCitations: Array<{ type: string; url?: string; title?: string }> = [];
-          
-          for await (const chunk of textCompletion) {
-            if (chunk.choices[0]?.delta?.content) {
-              const content = chunk.choices[0].delta.content;
-              fullResponse += content;
-              tokenCount++;
+            
+            console.log('🌐 STAGE 1: Getting web search results');
+            const textCompletion = await textCompletionPromise;
+            let webSearchResponse = '';
+            
+            // Collect web search response without streaming to client
+            for await (const chunk of textCompletion) {
+              if (chunk.choices[0]?.delta?.content) {
+                webSearchResponse += chunk.choices[0].delta.content;
+              }
               
-              // Stream token to client (skip logging individual tokens to avoid spam)
-              const tokenPayload = JSON.stringify({
-                type: 'token',
-                content,
-              });
-              controller.enqueue(encoder.encode(`${tokenPayload}\n`));
+              // Capture web search citations
+              if ((chunk as any).choices[0]?.delta?.annotations) {
+                const annotations = (chunk as any).choices[0].delta.annotations;
+                console.log('🌐 WEB SEARCH: Raw annotations:', JSON.stringify(annotations, null, 2));
+                webCitations.push(...annotations);
+              }
             }
             
-            // Capture web search citations if present (search models only)
-            if (queryClassification.needsWebSearch && (chunk as any).choices[0]?.delta?.annotations) {
-              const annotations = (chunk as any).choices[0].delta.annotations;
-              console.log('🌐 WEB SEARCH: Raw annotations:', JSON.stringify(annotations, null, 2));
-              webCitations.push(...annotations);
+            console.log('🌐 STAGE 1 COMPLETE: Web search response length:', webSearchResponse.length);
+            
+            // STAGE 2: Synthesis with RAG Context
+            const synthesisIndicator = JSON.stringify({
+              type: 'search_indicator',
+              content: '📚 Analyzing with knowledge base...'
+            });
+            controller.enqueue(encoder.encode(`${synthesisIndicator}\n`));
+            
+            console.log('📚 STAGE 2: Synthesizing with RAG context');
+            
+            // Create synthesis prompt combining web results with RAG context
+            const synthesisMessages = [
+              {
+                role: 'system' as const,
+                content: `You are Ellen, an expert AI assistant specializing in materials science, supply chains, and critical materials analysis.
+                
+                You have access to both REAL-TIME WEB SEARCH RESULTS and a COMPREHENSIVE MATERIALS KNOWLEDGE BASE.
+                
+                INSTRUCTIONS:
+                - Synthesize information from both web search results and knowledge base to provide comprehensive answers
+                - Integrate web sources naturally into your analysis (don't use standalone "[WEB]" headings)
+                - Use web sources for current prices, recent developments, market conditions, and breaking news
+                - Use knowledge base for technical specifications, historical context, risk assessments, and detailed material properties
+                - When citing sources, use inline references like "according to recent reports" or "based on our materials database"
+                - Provide analysis that leverages both real-time and curated information seamlessly
+                - Focus on the user's specific question and provide actionable insights
+                - Create a cohesive narrative that flows naturally between current events and technical context
+                
+                SOURCE ATTRIBUTION GUIDELINES:
+                - Web sources: Integrate naturally ("Recent reports indicate...", "Current market data shows...")
+                - Knowledge base: Reference as "our materials database", "technical specifications", "supply chain analysis"
+                - Use [DOC-X]/[VEC-X]/[DB-X] tags only when specifically referencing detailed technical data
+                - Avoid standalone section headers like "[WEB]" - instead weave sources into the narrative`
+              },
+              ...history.map(msg => ({
+                role: msg.role as 'user' | 'assistant',
+                content: msg.content,
+              })),
+              {
+                role: 'user' as const,
+                content: `${message}
+
+--- WEB SEARCH RESULTS ---
+${webSearchResponse}
+--- END WEB RESULTS ---
+
+${contextPrompt}`
+              }
+            ];
+            
+            // Stage 2: Synthesis completion
+            const synthesisCompletion = await openai.chat.completions.create({
+              model: 'gpt-4.1',
+              messages: synthesisMessages,
+              stream: true,
+              temperature: 0.7,
+              max_tokens: 2000,
+            });
+            
+            // Stream the synthesis response
+            for await (const chunk of synthesisCompletion) {
+              if (chunk.choices[0]?.delta?.content) {
+                const content = chunk.choices[0].delta.content;
+                fullResponse += content;
+                tokenCount++;
+                
+                // Stream token to client
+                const tokenPayload = JSON.stringify({
+                  type: 'token',
+                  content,
+                });
+                controller.enqueue(encoder.encode(`${tokenPayload}\n`));
+              }
+            }
+            
+          } else {
+            // SINGLE-STAGE PROCESSING FOR NON-WEB SEARCH QUERIES
+            console.log('🚀 API ROUTE: Processing standard completion stream');
+            const textCompletion = await textCompletionPromise;
+            
+            for await (const chunk of textCompletion) {
+              if (chunk.choices[0]?.delta?.content) {
+                const content = chunk.choices[0].delta.content;
+                fullResponse += content;
+                tokenCount++;
+                
+                // Stream token to client
+                const tokenPayload = JSON.stringify({
+                  type: 'token',
+                  content,
+                });
+                controller.enqueue(encoder.encode(`${tokenPayload}\n`));
+              }
             }
           }
           

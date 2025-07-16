@@ -63,14 +63,15 @@ export async function processStreamingResponse(
       
       switch (payload.type) {
         case 'search_indicator':
-          // Show search indicator as initial content
+          // Show search indicator as initial content (handles both web search and synthesis indicators)
           currentContent = payload.content as string;
           onToken(currentContent);
           break;
           
         case 'token':
-          // For first real token after search indicator, replace the indicator
-          if (currentContent.includes('🔍 Searching for up-to-date sources...')) {
+          // For first real token after any search indicator, replace the indicator
+          if (currentContent.includes('🔍 Searching for up-to-date sources...') || 
+              currentContent.includes('📚 Analyzing with knowledge base...')) {
             currentContent = payload.content as string;
           } else {
             currentContent += payload.content as string;
