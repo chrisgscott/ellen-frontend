@@ -32,6 +32,33 @@ export interface Material {
   symbol?: string; // Chemical symbol (e.g. "Ce", "Co")
   material_card_color?: string; // Hex color for the card
   url?: string;
+  
+  // Risk scores (1-5 scale)
+  supply_score?: number;
+  ownership_score?: number;
+  processing_score?: number;
+  chokepoints_score?: number;
+  demand_outlook_score?: number;
+  supply_outlook_score?: number;
+  price_trends_score?: number;
+  
+  // Market structure
+  market_concentration_hhi?: number;
+  trading_volume_annual_tonnes?: number;
+  
+  // Industries and customers
+  industries?: string;
+  key_end_customers?: string;
+  
+  // Supply chain details
+  source_locations?: string;
+  supply?: string;
+  ownership?: string;
+  processing?: string;
+  
+  // Market outlook
+  demand_outlook?: string;
+  price_trends?: string;
 }
 
 // A thread contains a user message and assistant response pair

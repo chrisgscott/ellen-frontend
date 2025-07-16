@@ -146,7 +146,7 @@ const searchSupabaseMaterials = async (query: string, supabase: Awaited<ReturnTy
         !stopWords.has(term) && // Filter out stop words
         !/^\d+$/.test(term) // Filter out pure numbers
       )
-      .slice(0, 5); // Limit to first 5 meaningful terms
+      .slice(0, 8); // Limit to first 8 meaningful terms
     
     // If no meaningful search terms found, try to find material names in the original query
     if (searchTerms.length === 0) {
@@ -189,22 +189,42 @@ const searchSupabaseMaterials = async (query: string, supabase: Awaited<ReturnTy
     // Search materials using individual queries per term (more reliable than complex OR)
     const allResults = new Map<string, Material>(); // Use Map to deduplicate by material ID
     
-    // Search for each term individually
+    // First, search for exact material name matches (highest priority)
     for (const term of searchTerms) {
-      const { data: termResults, error: termError } = await supabase
+      const { data: exactMatches, error: exactError } = await supabase
         .from('materials')
         .select('*')
-        .or(`material.ilike.%${term}%,short_summary.ilike.%${term}%,summary.ilike.%${term}%`)
-        .limit(10); // Get more per term, then dedupe
+        .ilike('material', `%${term}%`)
+        .limit(3);
       
-      if (!termError && termResults) {
-        termResults.forEach((material: Material) => {
+      if (!exactError && exactMatches) {
+        exactMatches.forEach((material: Material) => {
           allResults.set(material.id, material);
         });
       }
     }
     
-    const materials = Array.from(allResults.values()).slice(0, 5);
+    // Then search for broader matches in summaries (if we need more results)
+    if (allResults.size < 7) {
+      for (const term of searchTerms) {
+        const { data: termResults, error: termError } = await supabase
+          .from('materials')
+          .select('*')
+          .or(`short_summary.ilike.%${term}%,summary.ilike.%${term}%`)
+          .limit(8); // Get more per term for diversity
+        
+        if (!termError && termResults) {
+          termResults.forEach((material: Material) => {
+            allResults.set(material.id, material);
+          });
+        }
+        
+        // Stop if we have enough results
+        if (allResults.size >= 10) break;
+      }
+    }
+    
+    const materials = Array.from(allResults.values()).slice(0, 7);
     const error = null; // We handle errors per term above
 
     if (error) {
@@ -450,14 +470,61 @@ export async function POST(req: NextRequest): Promise<Response> {
               contextPrompt += '\n\nMaterials Database (Structured):';
               supabaseMaterials.forEach((material, idx) => {
                 contextPrompt += `\n[DB-${idx + 1}] ${material.material}:`;
-                if (material.short_summary) {
-                  contextPrompt += `\nShort Summary: ${material.short_summary}`;
-                }
-                if (material.summary) {
-                  contextPrompt += `\nSummary: ${material.summary}`;
-                }
+                
+                // Core identification
                 if (material.symbol) {
                   contextPrompt += `\nSymbol: ${material.symbol}`;
+                }
+                if (material.short_summary) {
+                  contextPrompt += `\nOverview: ${material.short_summary}`;
+                }
+                
+                // Risk scores (critical for supply chain analysis)
+                const riskScores = [];
+                if (material.supply_score) riskScores.push(`Supply: ${material.supply_score}/5`);
+                if (material.ownership_score) riskScores.push(`Ownership: ${material.ownership_score}/5`);
+                if (material.processing_score) riskScores.push(`Processing: ${material.processing_score}/5`);
+                if (material.chokepoints_score) riskScores.push(`Chokepoints: ${material.chokepoints_score}/5`);
+                if (riskScores.length > 0) {
+                  contextPrompt += `\nRisk Scores: ${riskScores.join(', ')}`;
+                }
+                
+                // Market structure (better as structured data than semantic)
+                if (material.market_concentration_hhi) {
+                  contextPrompt += `\nMarket Concentration (HHI): ${material.market_concentration_hhi}`;
+                }
+                if (material.trading_volume_annual_tonnes) {
+                  contextPrompt += `\nAnnual Trading Volume: ${material.trading_volume_annual_tonnes} tonnes`;
+                }
+                
+                // Key industries and customers (structured lists)
+                if (material.industries) {
+                  contextPrompt += `\nKey Industries:\n${material.industries}`;
+                }
+                if (material.key_end_customers) {
+                  contextPrompt += `\nMajor Customers: ${material.key_end_customers}`;
+                }
+                
+                // Supply chain specifics (geographic and operational)
+                if (material.source_locations) {
+                  contextPrompt += `\nSource Locations:\n${material.source_locations}`;
+                }
+                if (material.supply) {
+                  contextPrompt += `\nSupply Details:\n${material.supply}`;
+                }
+                if (material.ownership) {
+                  contextPrompt += `\nOwnership Structure:\n${material.ownership}`;
+                }
+                if (material.processing) {
+                  contextPrompt += `\nProcessing Details:\n${material.processing}`;
+                }
+                
+                // Market outlook (structured forecasts)
+                if (material.demand_outlook) {
+                  contextPrompt += `\nDemand Outlook:\n${material.demand_outlook}`;
+                }
+                if (material.price_trends) {
+                  contextPrompt += `\nPrice Trends:\n${material.price_trends}`;
                 }
               });
             }
