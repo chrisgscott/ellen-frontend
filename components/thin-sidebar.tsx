@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -8,15 +9,36 @@ import {
   BookOpen, 
   Grid3X3, 
   User, 
-  LogOut 
+  LogOut,
+  Shield // Added for Admin button
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client'; // Added to fetch role
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Image from 'next/image';
 
 export function ThinSidebar() {
   const pathname = usePathname();
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setUserRole(profile.role);
+        }
+      }
+    };
+    fetchUserRole();
+  }, []);
   
   const navItems = [
     { icon: Home, name: 'Home', href: '/home' },
@@ -63,6 +85,26 @@ export function ThinSidebar() {
       {/* User and Logout */}
       <div className="flex flex-col items-center py-4 gap-2">
         <TooltipProvider delayDuration={300}>
+          {userRole === 'admin' && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href="/admin" passHref>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "h-10 w-10 rounded-full",
+                      pathname.startsWith('/admin') && "bg-accent text-accent-foreground"
+                    )}
+                  >
+                    <Shield className="h-5 w-5" />
+                    <span className="sr-only">Admin</span>
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">Admin</TooltipContent>
+            </Tooltip>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <Link href="/account" passHref>

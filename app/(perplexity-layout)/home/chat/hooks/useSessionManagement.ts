@@ -49,10 +49,17 @@ export async function createNewSession(
   initialQuery?: string
 ): Promise<Session> {
   try {
+    // Get the current user's ID
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
     // Create session in database
     const { data: sessionData, error: sessionError } = await supabase
       .from('sessions')
       .insert({ 
+        user_id: user.id,
         project_id: projectId || null,
         title: title || 'New Chat',
         metadata: initialQuery ? { initial_query: initialQuery } : {}

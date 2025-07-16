@@ -1,4 +1,5 @@
 import { ThinSidebar } from "@/components/thin-sidebar";
+import { Toaster } from "@/components/ui/toaster";
 
 export default function PerplexityLayout({
   children,
@@ -11,6 +12,7 @@ export default function PerplexityLayout({
       <div className="flex-1 overflow-auto">
         {children}
       </div>
+      <Toaster />
     </div>
   );
 }

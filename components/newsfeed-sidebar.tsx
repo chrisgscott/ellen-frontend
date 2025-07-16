@@ -1,6 +1,7 @@
 'use client';
 
-import { useQuery } from "@tanstack/react-query";
+import React from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Newspaper, 
   RefreshCw, 
-  ExternalLink 
+  ExternalLink,
+  EyeOff 
 } from "lucide-react";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
@@ -67,9 +69,11 @@ const NewsItemSkeleton = () => (
 interface NewsItemCardProps {
   item: NewsItem;
   onItemClick?: (item: NewsItem) => void;
+  onHide?: (itemId: number) => void;
+  isHiding?: boolean;
 }
 
-const NewsItemCard = ({ item, onItemClick }: NewsItemCardProps) => (
+const NewsItemCard = ({ item, onItemClick, onHide, isHiding }: NewsItemCardProps) => (
   <Card className="shadow-[0_2px_8px_rgba(0,0,0,0.05)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-shadow duration-300">
     <CardContent className="p-4">
       <div className="space-y-3">
@@ -96,16 +100,29 @@ const NewsItemCard = ({ item, onItemClick }: NewsItemCardProps) => (
           {item.snippet}
         </p>
         
-        {/* External Link */}
-        <a 
-          href={item.link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors"
-        >
-          <span>Read full article</span>
-          <ExternalLink className="w-3 h-3" />
-        </a>
+        {/* Actions */}
+        <div className="flex items-center justify-between">
+          <a 
+            href={item.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors"
+          >
+            <span>Read full article</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onHide?.(item.id)}
+            disabled={isHiding}
+            className="h-8 px-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+            title={isHiding ? "Hiding..." : "Hide this article"}
+          >
+            <EyeOff className={`w-4 h-4 ${isHiding ? 'animate-pulse' : ''}`} />
+          </Button>
+        </div>
         
         {/* Commentary Section */}
         <div className="border-t border-border pt-3 mt-3">
@@ -145,7 +162,46 @@ export function NewsFeedSidebar({
   showFooter = true,
   onItemClick
 }: NewsFeedSidebarProps) {
+  const queryClient = useQueryClient();
   const { data: newsItems, isLoading, error, refetch } = useNewsData(apiEndpoint);
+  const [hidingItems, setHidingItems] = React.useState<Set<number>>(new Set());
+
+  const handleHideItem = async (itemId: number) => {
+    // Prevent multiple clicks
+    if (hidingItems.has(itemId)) {
+      return;
+    }
+
+    setHidingItems(prev => new Set(prev).add(itemId));
+
+    try {
+      const response = await fetch(`/api/news/${itemId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ show: false }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to hide item');
+      }
+
+      // Invalidate and refetch the news data
+      await queryClient.invalidateQueries({ queryKey: ['news', apiEndpoint] });
+      await refetch();
+    } catch (error) {
+      console.error('Error hiding news item:', error);
+      // You could add a toast notification here if you have one set up
+    } finally {
+      setHidingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(itemId);
+        return newSet;
+      });
+    }
+  };
 
   const handleRefresh = () => {
     refetch();
@@ -206,6 +262,8 @@ export function NewsFeedSidebar({
                 key={item.id} 
                 item={item} 
                 onItemClick={onItemClick}
+                onHide={handleHideItem}
+                isHiding={hidingItems.has(item.id)}
               />
             ))
           ) : (
