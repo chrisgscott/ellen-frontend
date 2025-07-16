@@ -67,7 +67,7 @@ export default function ChatPage() {
         console.log('🔴 EXISTING THREAD UPDATE - NOT SCROLLING (streaming in progress)');
       }
     }
-  }, [session?.threads?.length]); // Only trigger when thread COUNT changes
+  }, [session?.threads?.length, session?.threads]); // Only trigger when thread COUNT changes
   
   // Get initial query from session metadata
   const initialQuery = session?.metadata?.initial_query as string | undefined;

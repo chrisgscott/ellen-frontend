@@ -783,8 +783,9 @@ export async function POST(req: NextRequest): Promise<Response> {
               }
               
               // Capture web search citations
-              if ((chunk as any).choices[0]?.delta?.annotations) {
-                const annotations = (chunk as any).choices[0].delta.annotations;
+              const chunkWithAnnotations = chunk as { choices: Array<{ delta?: { annotations?: Array<{ type: string; url_citation?: { title?: string; url?: string } }> } }> };
+              if (chunkWithAnnotations.choices[0]?.delta?.annotations) {
+                const annotations = chunkWithAnnotations.choices[0].delta.annotations;
                 console.log('🌐 WEB SEARCH: Raw annotations:', JSON.stringify(annotations, null, 2));
                 webCitations.push(...annotations);
               }
@@ -1000,7 +1001,15 @@ ${contextPrompt}`
             const queryTerms = message.toLowerCase().split(/\W+/).filter((term: string) => term.length > 2);
             console.log('🔍 WEB SEARCH: Query terms for relevance filtering:', queryTerms);
             
-            const webSources = webCitations.map((citation: any) => {
+            type WebCitation = {
+              type: string;
+              url_citation?: { title?: string; url?: string };
+              metadata?: { title?: string; url?: string };
+              title?: string;
+              url?: string;
+            };
+            
+            const webSources = webCitations.map((citation: WebCitation) => {
               // Handle OpenAI's url_citation format
               let title = 'Web Search Result';
               let url = '';
