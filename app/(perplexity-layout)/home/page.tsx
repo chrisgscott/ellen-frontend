@@ -83,7 +83,7 @@ export default function HomePage() {
         </Link>
       </div>
       {/* Logo and Title */}
-      <div className="mb-8 text-center">
+      <div className="text-center mb-6 mt-20">
         <h1 className="text-4xl font-bold text-gray-800 mb-3">Hello, {firstName || 'there'}.</h1>
         <p className="text-lg text-gray-500">I&apos;m ELLEN, your critical materials AI analyst. How can I help you today?</p>
       </div>
@@ -95,7 +95,7 @@ export default function HomePage() {
             <Input
               type="text"
               placeholder="Ask anything or @mention a Space"
-              className="pl-10 pr-16 py-6 text-base rounded-full border border-input bg-background"
+              className="pl-10 pr-16 py-6 text-base rounded-full border border-input bg-background transition-shadow duration-300 focus:shadow-[0_0_25px_rgba(29,99,139,0.15)] focus:outline-none"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               autoFocus
@@ -116,7 +116,7 @@ export default function HomePage() {
       </div>
 
       {/* Navigation Cards */}
-      <div className="mt-12 w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="mt-16 w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-4">
         <Link href="/home/news" className="block">
           <Card className="hover:bg-muted/50 transition-colors h-full">
             <div className="p-3 flex items-center gap-3">
