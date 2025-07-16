@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useSession } from './hooks/useSession';
 import { clearInitialQuery } from './hooks/useSessionManagement';
 
@@ -148,10 +150,45 @@ export default function ChatPage() {
               <div className="flex-1 overflow-y-auto px-6 py-6 pb-24">
               {/* Assistant Response */}
               {thread.assistant_message && (
-                <div className="prose max-w-none mb-8">
-                  <div className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+                <div className="prose prose-gray max-w-none mb-8 prose-headings:text-gray-900 prose-p:text-gray-800 prose-strong:text-gray-900 prose-code:text-gray-900 prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-gray-50 prose-pre:border prose-table:border-collapse prose-th:border prose-th:border-gray-300 prose-th:bg-gray-50 prose-th:px-4 prose-th:py-2 prose-td:border prose-td:border-gray-300 prose-td:px-4 prose-td:py-2">
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      // Custom table styling
+                      table: ({ children }) => (
+                        <div className="overflow-x-auto my-6">
+                          <table className="min-w-full border-collapse border border-gray-300 rounded-lg">
+                            {children}
+                          </table>
+                        </div>
+                      ),
+                      // Custom code block styling
+                      pre: ({ children }) => (
+                        <pre className="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto">
+                          {children}
+                        </pre>
+                      ),
+                      // Custom inline code styling
+                      code: ({ children, className }) => {
+                        const isInline = !className;
+                        return isInline ? (
+                          <code className="bg-gray-100 text-gray-900 px-1.5 py-0.5 rounded text-sm font-mono">
+                            {children}
+                          </code>
+                        ) : (
+                          <code className={className}>{children}</code>
+                        );
+                      },
+                      // Custom blockquote styling
+                      blockquote: ({ children }) => (
+                        <blockquote className="border-l-4 border-blue-500 pl-4 py-2 my-4 bg-blue-50 italic text-gray-700">
+                          {children}
+                        </blockquote>
+                      )
+                    }}
+                  >
                     {thread.assistant_message.content}
-                  </div>
+                  </ReactMarkdown>
                 </div>
               )}
               
