@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import OpenAI from 'openai';
 import { extractMaterials } from '../../../lib/materials';
 import { Thread, Source, Material } from '@/app/(perplexity-layout)/home/chat/types';
+import { getAllToolSchemas, getToolByName } from '@/lib/tools/registry';
 
 // Request deduplication cache
 const requestCache = new Map<string, { timestamp: number; processing: boolean }>();
@@ -49,46 +50,8 @@ type PineconeHit = {
 
 type PineconeNamespace = 'documents' | 'materials';
 
-// Define the function schema for structured outputs
-const materialExtractorFunction = {
-  type: 'function' as const,
-  function: {
-    name: 'extract_materials_and_suggestions',
-    description: 'Extract materials mentioned in the response and suggest follow-up questions',
-    parameters: {
-      type: 'object',
-      properties: {
-        materials: {
-          type: 'array',
-          description: 'Array of material names mentioned in the response',
-          items: {
-            type: 'string',
-          },
-        },
-        sources: {
-          type: 'array',
-          description: 'Array of sources referenced in the response',
-          items: {
-            type: 'object',
-            properties: {
-              title: { type: 'string' },
-              url: { type: 'string' },
-            },
-            required: ['title'],
-          },
-        },
-        suggested_questions: {
-          type: 'array',
-          description: 'Array of suggested follow-up questions',
-          items: {
-            type: 'string',
-          },
-        },
-      },
-      required: ['materials', 'sources', 'suggested_questions'],
-    },
-  },
-};
+// Tool definitions are now managed by the tool registry system
+// See /lib/tools/ for individual tool implementations
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -125,30 +88,50 @@ type QueryClassification = {
 const classifyQuery = (query: string): QueryClassification => {
   const queryLower = query.toLowerCase();
   
-  // Keywords that indicate need for current/real-time information
+  // Keywords that indicate need for current/real-time information - check these FIRST
   const currentKeywords = [
     'current', 'latest', 'recent', 'today', 'now', 'this year', '2024', '2025',
     'price', 'cost', 'market', 'trading', 'stock', 'commodity', 'valued', 'worth', 'deal',
     'news', 'announcement', 'breaking', 'update', 'development', 'partnership',
-    'shortage', 'supply chain', 'disruption', 'crisis', 'contract', 'agreement',
-    'sanctions', 'trade war', 'geopolitical', 'conflict', 'investment', 'funding',
-    'acquisition', 'merger', 'financial', 'revenue', 'earnings', 'quarterly'
+    'investment', 'funding', 'acquisition', 'merger', 'financial', 'revenue', 'earnings', 'quarterly'
   ];
   
   // Check if query contains current/real-time indicators
   const matchedKeywords = currentKeywords.filter(keyword => queryLower.includes(keyword));
   const hasCurrentKeywords = matchedKeywords.length > 0;
   
+  // If query asks for current/recent information, use web search even if it's in Ellen's domain
   if (hasCurrentKeywords) {
     // Determine which search model to use based on complexity
-    // Only consider truly complex analytical queries, not simple "how much" or "what" questions
     const complexKeywords = ['detailed analysis', 'comprehensive', 'explain why', 'analyze', 'implications', 'impact on', 'compare'];
     const isComplex = complexKeywords.some(keyword => queryLower.includes(keyword));
     
     return {
       needsWebSearch: true,
       searchModel: isComplex ? 'gpt-4o-search-preview' : 'gpt-4o-mini-search-preview',
-      searchReason: `Query contains keywords: [${matchedKeywords.join(', ')}] - ${isComplex ? 'Complex analysis' : 'Simple lookup'} requiring current information`
+      searchReason: `Query contains current/recent keywords: [${matchedKeywords.join(', ')}] - ${isComplex ? 'Complex analysis' : 'Simple lookup'} requiring current information`
+    };
+  }
+  
+  // Ellen's domain-specific keywords - these should use tools, not web search (only if no current keywords)
+  const ellenDomainKeywords = [
+    'opportunities', 'portfolio', 'holdings', 'materials', 'risks', 'geopolitical',
+    'gallium', 'osmium', 'lithium', 'rare earth', 'copper', 'germanium', 'tungsten',
+    'supply chain', 'suppliers', 'customers', 'defense', 'strategic', 'critical',
+    'stockpile', 'inventory', 'position', 'exposure', 'vulnerability', 'disruption',
+    'sanctions', 'export control', 'china', 'crisis', 'shortage', 'capacity'
+  ];
+  
+  // Check if query is clearly within Ellen's strategic materials domain
+  const domainMatches = ellenDomainKeywords.filter(keyword => queryLower.includes(keyword));
+  const isEllenDomain = domainMatches.length > 0;
+  
+  // If it's clearly Ellen's domain (and no current keywords), prioritize tools over web search
+  if (isEllenDomain) {
+    return {
+      needsWebSearch: false,
+      searchModel: null,
+      searchReason: `Strategic materials query detected: [${domainMatches.join(', ')}] - Using Ellen's specialized tools`
     };
   }
   
@@ -472,6 +455,9 @@ export async function POST(req: NextRequest): Promise<Response> {
     const stream = new ReadableStream({
       async start(controller) {
         try {
+          // Track tools called during this request
+          const toolsCalled: Array<{ name: string, success: boolean, timestamp: string }> = [];
+          
           // Get chat history for context
           const { data: historyData, error: historyError } = await supabase
             .from('threads_view')
@@ -732,7 +718,13 @@ export async function POST(req: NextRequest): Promise<Response> {
             messages: [
               {
                 role: 'system',
-                content: `Extract materials mentioned in the response, identify sources referenced, and suggest follow-up questions.
+                content: `You are Ellen, an expert AI assistant specializing in strategic materials intelligence. Use your available tools to provide comprehensive analysis.
+                
+                TOOL USAGE GUIDELINES:
+                - For queries about "opportunities", "investments", "deals", or "worth $X million/billion": Call get_high_impact_opportunities
+                - For portfolio analysis, holdings summary, positions, or "what do we own": Call get_portfolio_summary
+                - For geopolitical risk analysis, supply chain disruptions, or crisis scenarios: Call monitor_geopolitical_risks  
+                - Always call extract_materials_and_suggestions to identify materials, sources, and generate follow-up questions
                 
                 MATERIALS: Focus on identifying specific materials, alloys, composites, or chemical compounds discussed.
                 
@@ -752,8 +744,8 @@ export async function POST(req: NextRequest): Promise<Response> {
               })),
               { role: 'user', content: queryClassification.needsWebSearch ? message : `${message}${contextPrompt}` },
             ],
-            tools: [materialExtractorFunction],
-            tool_choice: { type: 'function', function: { name: 'extract_materials_and_suggestions' } },
+            tools: getAllToolSchemas(),
+            tool_choice: 'auto',
             temperature: 0.3,
             max_tokens: 1000,
           });
@@ -916,13 +908,53 @@ ${contextPrompt}`
           // Get the function call data from the non-streaming response
           if (structuredCompletion.choices[0]?.message?.tool_calls?.[0]?.function) {
             const toolCall = structuredCompletion.choices[0].message.tool_calls[0];
+            const toolName = toolCall.function.name;
             functionCallBuffer = toolCall.function.arguments || '';
             
-            try {
-              extractedData = JSON.parse(functionCallBuffer);
-              console.log('🚀 API ROUTE: Successfully parsed function call data:', extractedData);
-            } catch (err) {
-              console.error('🚀 API ROUTE: Error parsing function call data:', err);
+            console.log('🔧 TOOL CALL: Executing tool:', toolName, 'with args:', functionCallBuffer ? JSON.parse(functionCallBuffer) : {});
+            const toolStartTime = new Date().toISOString();
+            
+            // Handle tools using the registry system
+            const tool = getToolByName(toolName);
+            if (tool) {
+              try {
+                const args = functionCallBuffer ? JSON.parse(functionCallBuffer) : {};
+                const toolContext = {
+                  supabase,
+                  controller,
+                  encoder,
+                  session_id,
+                  thread_id,
+                  message,
+                };
+                
+                const result = await tool.handler(args, toolContext);
+                
+                if (result.success) {
+                  console.log('✅ TOOL SUCCESS:', toolName, 'completed successfully');
+                  toolsCalled.push({ name: toolName, success: true, timestamp: toolStartTime });
+                  
+                  // Stream data to client if requested
+                  if (result.streamToClient && result.clientPayload) {
+                    const payload = JSON.stringify(result.clientPayload);
+                    controller.enqueue(encoder.encode(`${payload}\n`));
+                  }
+                  
+                  // Handle special case for material extraction
+                  if (toolName === 'extract_materials_and_suggestions' && result.data) {
+                    extractedData = result.data as { materials: string[], sources: Source[], suggested_questions: string[] };
+                  }
+                } else {
+                  console.error('❌ TOOL FAILED:', toolName, 'error:', result.error);
+                  toolsCalled.push({ name: toolName, success: false, timestamp: toolStartTime });
+                }
+              } catch (error) {
+                console.error('💥 TOOL ERROR:', toolName, 'threw exception:', error);
+                toolsCalled.push({ name: toolName, success: false, timestamp: toolStartTime });
+              }
+            } else {
+              console.warn('⚠️ UNKNOWN TOOL:', toolName, 'not found in registry');
+              toolsCalled.push({ name: toolName, success: false, timestamp: new Date().toISOString() });
             }
           }
 
@@ -960,9 +992,18 @@ ${contextPrompt}`
               }
             }
           } else {
-            console.log('🚀 API ROUTE: No structured materials, using fallback text extraction');
-            // Fallback to text-based material extraction
-            const materials = await extractMaterials(fullResponse);
+            console.log('🚀 API ROUTE: No structured materials, using fallback extraction');
+            // First try to use RAG-found materials, then fall back to text extraction
+            let materials: Material[] = [];
+            
+            if (supabaseMaterials.length > 0) {
+              console.log('🚀 API ROUTE: Using RAG-found materials:', supabaseMaterials.length);
+              materials = supabaseMaterials;
+            } else {
+              console.log('🚀 API ROUTE: No RAG materials, falling back to text extraction');
+              materials = await extractMaterials(fullResponse);
+            }
+            
             if (materials.length > 0) {
               console.log('🚀 API ROUTE: Fallback materials found:', materials.length);
               await supabase
@@ -1138,6 +1179,18 @@ ${contextPrompt}`
           }
 
           // Close the stream
+          // Log summary of all tools called
+          if (toolsCalled.length > 0) {
+            console.log('🔧 TOOLS SUMMARY:', {
+              totalCalled: toolsCalled.length,
+              successful: toolsCalled.filter(t => t.success).length,
+              failed: toolsCalled.filter(t => !t.success).length,
+              tools: toolsCalled.map(t => `${t.name}(${t.success ? '✅' : '❌'})`).join(', ')
+            });
+          } else {
+            console.log('🔧 TOOLS SUMMARY: No tools called during this request');
+          }
+          
           console.log('🚀 API ROUTE: Request completed, closing stream');
           // Mark request as completed (no longer processing)
           requestCache.set(requestKey, { timestamp: now, processing: false });

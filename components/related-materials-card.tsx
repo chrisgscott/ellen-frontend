@@ -8,9 +8,12 @@ interface RelatedMaterialsCardProps {
 }
 
 export function RelatedMaterialsCard({ material }: RelatedMaterialsCardProps) {
-  const symbol = material.symbol ?? `${material.material.charAt(0).toUpperCase()}${material.material.charAt(1)?.toLowerCase() ?? ''}`;
+  // Safely generate symbol with null checking
+  const materialName = material.material || 'Unknown';
+  const symbol = material.symbol ?? `${materialName.charAt(0)?.toUpperCase() ?? 'U'}${materialName.charAt(1)?.toLowerCase() ?? ''}`;
+  
   return (
-    <Link href={`/materials/${encodeURIComponent(material.material)}`} target="_blank" rel="noopener noreferrer">
+    <Link href={`/materials/${encodeURIComponent(materialName)}`} target="_blank" rel="noopener noreferrer">
       <div className="min-w-[240px] max-w-[280px] h-24 flex items-center gap-4 bg-gray-100 hover:shadow-md transition-shadow cursor-pointer rounded-xl border p-4 overflow-hidden">
         {/* Element-like square */}
         <div
@@ -22,8 +25,8 @@ export function RelatedMaterialsCard({ material }: RelatedMaterialsCardProps) {
 
         {/* Name & description */}
         <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-foreground text-sm leading-tight truncate">{material.material}</h3>
-          <p className="text-xs text-muted-foreground overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{material.short_summary}</p>
+          <h3 className="font-medium text-foreground text-sm leading-tight truncate">{materialName}</h3>
+          <p className="text-xs text-muted-foreground overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{material.short_summary || 'No description available'}</p>
         </div>
       </div>
     </Link>
