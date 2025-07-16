@@ -27,10 +27,10 @@ export interface Source {
 export interface Material {
   id: string;
   material: string; // Name of the material
-  short_summary: string;
+  short_summary?: string;
+  summary?: string; // Full summary from database
   symbol?: string; // Chemical symbol (e.g. "Ce", "Co")
   material_card_color?: string; // Hex color for the card
-  description?: string;
   url?: string;
 }
 

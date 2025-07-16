@@ -2,7 +2,37 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import OpenAI from 'openai';
 import { extractMaterials } from '../../../lib/materials';
-import { Thread, Source } from '@/app/(perplexity-layout)/home/chat/types';
+import { Thread, Source, Material } from '@/app/(perplexity-layout)/home/chat/types';
+
+// Pinecone types
+type PineconeDocument = {
+  id: string;
+  score: number;
+  metadata: {
+    text?: string;
+    filename?: string;
+    documentType?: string;
+    enhanced_doc_type?: string;
+    detectedMaterials?: string[];
+    detected_materials?: string[];
+    geographic_focus?: string;
+    title?: string;
+    url?: string;
+    material_name?: string;
+    properties?: string;
+    applications?: string;
+    namespace?: string;
+  };
+  text: string;
+};
+
+type PineconeHit = {
+  _id: string;
+  _score?: number;
+  fields: Record<string, unknown>;
+};
+
+type PineconeNamespace = 'documents' | 'materials';
 
 // Define the function schema for structured outputs
 const materialExtractorFunction = {
@@ -49,6 +79,194 @@ const materialExtractorFunction = {
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+// Multi-namespace Pinecone search function
+const searchPineconeNamespace = async (query: string, namespace: PineconeNamespace): Promise<PineconeDocument[]> => {
+  try {
+    const response = await fetch(`https://strategic-materials-intel-x1l8cyh.svc.aped-4627-b74a.pinecone.io/records/namespaces/${namespace}/search`, {
+      method: 'POST',
+      headers: {
+        'Api-Key': process.env.PINECONE_API_KEY!,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Pinecone-API-Version': 'unstable'
+      },
+      body: JSON.stringify({
+        query: {
+          inputs: { text: query },
+          top_k: 3 // Reduced per namespace to balance total results
+        },
+        fields: ['text', 'filename', 'documentType', 'enhanced_doc_type', 'detectedMaterials', 'detected_materials', 'geographic_focus', 'title', 'url', 'material_name', 'properties', 'applications']
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Pinecone API error for ${namespace} namespace:`, errorText);
+      return [];
+    }
+
+    const data = await response.json();
+    const hits = data.result?.hits || [];
+    return hits.map((hit: PineconeHit) => ({
+      id: hit._id,
+      score: hit._score || 0,
+      metadata: {
+        ...hit.fields,
+        namespace // Add namespace info for context
+      },
+      text: hit.fields?.text || ''
+    }));
+  } catch (error) {
+    console.error(`Pinecone search error for ${namespace} namespace:`, error);
+    return [];
+  }
+};
+
+// Search Supabase materials database for relevant materials
+const searchSupabaseMaterials = async (query: string, supabase: Awaited<ReturnType<typeof createClient>>): Promise<Material[]> => {
+  try {
+    console.log('🗄️ RAG: Searching Supabase materials database');
+    
+    // Extract meaningful search terms, filtering out stop words
+    const stopWords = new Set([
+      'what', 'are', 'the', 'how', 'why', 'when', 'where', 'which', 'who',
+      'does', 'did', 'will', 'would', 'could', 'should', 'can', 'may', 'might',
+      'and', 'but', 'for', 'nor', 'yet', 'so', 'or', 'as', 'if', 'than',
+      'this', 'that', 'these', 'those', 'with', 'from', 'into', 'onto', 'upon',
+      'most', 'more', 'some', 'any', 'all', 'each', 'every', 'many', 'much',
+      'current', 'efforts', 'countries', 'materials'
+    ]);
+    
+    const searchTerms = query.toLowerCase()
+      .replace(/[^a-zA-Z0-9\s]/g, ' ') // Remove special characters
+      .split(/\s+/)
+      .filter(term => 
+        term.length > 2 && // Only terms longer than 2 chars
+        !stopWords.has(term) && // Filter out stop words
+        !/^\d+$/.test(term) // Filter out pure numbers
+      )
+      .slice(0, 5); // Limit to first 5 meaningful terms
+    
+    // If no meaningful search terms found, try to find material names in the original query
+    if (searchTerms.length === 0) {
+      console.log('🗄️ RAG: No meaningful search terms, trying material name search');
+      
+      // Try to find any material names mentioned in the query
+      const { data: allMaterials, error: allMaterialsError } = await supabase
+        .from('materials')
+        .select('material')
+        .limit(100);
+      
+      if (!allMaterialsError && allMaterials) {
+        const queryLower = query.toLowerCase();
+        const mentionedMaterials = allMaterials.filter(m => 
+          queryLower.includes(m.material.toLowerCase())
+        );
+        
+        if (mentionedMaterials.length > 0) {
+          // Get full data for mentioned materials
+          const materialNames = mentionedMaterials.map(m => m.material);
+          const { data: materials, error } = await supabase
+            .from('materials')
+            .select('*')
+            .in('material', materialNames)
+            .limit(5);
+          
+          if (!error && materials) {
+            console.log('🗄️ RAG: Found materials by name matching:', {
+              count: materials.length,
+              materials: materials.map(m => m.material)
+            });
+            return materials;
+          }
+        }
+      }
+      
+      return [];
+    }
+    
+    // Search materials using individual queries per term (more reliable than complex OR)
+    const allResults = new Map<string, Material>(); // Use Map to deduplicate by material ID
+    
+    // Search for each term individually
+    for (const term of searchTerms) {
+      const { data: termResults, error: termError } = await supabase
+        .from('materials')
+        .select('*')
+        .or(`material.ilike.%${term}%,short_summary.ilike.%${term}%,summary.ilike.%${term}%`)
+        .limit(10); // Get more per term, then dedupe
+      
+      if (!termError && termResults) {
+        termResults.forEach((material: Material) => {
+          allResults.set(material.id, material);
+        });
+      }
+    }
+    
+    const materials = Array.from(allResults.values()).slice(0, 5);
+    const error = null; // We handle errors per term above
+
+    if (error) {
+      console.error('🗄️ RAG: Supabase materials search error:', error);
+      // Fallback: try a simpler search with just the first term
+      if (searchTerms.length > 0) {
+        const { data: fallbackMaterials, error: fallbackError } = await supabase
+          .from('materials')
+          .select('*')
+          .ilike('material', `%${searchTerms[0]}%`)
+          .limit(3);
+        
+        if (!fallbackError && fallbackMaterials) {
+          console.log('🗄️ RAG: Using fallback search results');
+          return fallbackMaterials;
+        }
+      }
+      return [];
+    }
+
+    console.log('🗄️ RAG: Found Supabase materials:', {
+      count: materials?.length || 0,
+      searchTerms,
+      materials: materials?.map((m: Material) => m.material) || []
+    });
+
+    return materials || [];
+  } catch (error) {
+    console.error('🗄️ RAG: Supabase materials search error:', error);
+    return [];
+  }
+};
+
+// Search multiple Pinecone namespaces and combine results
+const searchMultipleNamespaces = async (query: string): Promise<PineconeDocument[]> => {
+  try {
+    console.log('🔍 RAG: Searching Pinecone namespaces:', ['documents', 'materials']);
+    
+    // Search both namespaces in parallel
+    const [documentsResults, materialsResults] = await Promise.all([
+      searchPineconeNamespace(query, 'documents'),
+      searchPineconeNamespace(query, 'materials')
+    ]);
+
+    // Combine and sort by relevance score
+    const allResults = [...documentsResults, ...materialsResults]
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
+      .slice(0, 6); // Top 6 results total
+
+    console.log('🔍 RAG: Retrieved context:', {
+      documentsCount: documentsResults.length,
+      materialsCount: materialsResults.length,
+      totalResults: allResults.length,
+      topScores: allResults.slice(0, 3).map(r => r.score)
+    });
+
+    return allResults;
+  } catch (error) {
+    console.error('🔍 RAG: Multi-namespace search error:', error);
+    return [];
+  }
+};
 
 export const runtime = 'edge';
 
@@ -194,47 +412,111 @@ export async function POST(req: NextRequest): Promise<Response> {
             console.error('🚀 API ROUTE: Error updating thread with assistant message ID:', updateThreadError);
           }
 
+          // RAG: Search both Pinecone and Supabase for relevant context
+          console.log('🔍 RAG: Starting hybrid context retrieval for query:', message.substring(0, 100));
+          
+          // Search Pinecone and Supabase in parallel
+          const [pineconeContext, supabaseMaterials] = await Promise.all([
+            searchMultipleNamespaces(message),
+            searchSupabaseMaterials(message, supabase)
+          ]);
+          
+          // Build context prompt from retrieved documents and materials
+          let contextPrompt = '';
+          
+          if (pineconeContext.length > 0 || supabaseMaterials.length > 0) {
+            contextPrompt += '\n\n--- RELEVANT CONTEXT ---';
+            
+            // Pinecone document sources
+            const documentsContext = pineconeContext.filter(doc => doc.metadata.namespace === 'documents');
+            if (documentsContext.length > 0) {
+              contextPrompt += '\n\nDocument Sources:';
+              documentsContext.forEach((doc, idx) => {
+                contextPrompt += `\n[DOC-${idx + 1}] ${doc.metadata.title || doc.metadata.filename || 'Document'}:\n${doc.text}`;
+              });
+            }
+            
+            // Pinecone materials context
+            const pineconeMatContext = pineconeContext.filter(doc => doc.metadata.namespace === 'materials');
+            if (pineconeMatContext.length > 0) {
+              contextPrompt += '\n\nMaterials Vector Database:';
+              pineconeMatContext.forEach((doc, idx) => {
+                contextPrompt += `\n[VEC-${idx + 1}] ${doc.metadata.material_name || 'Material'}:\n${doc.text}`;
+              });
+            }
+            
+            // Supabase structured materials data
+            if (supabaseMaterials.length > 0) {
+              contextPrompt += '\n\nMaterials Database (Structured):';
+              supabaseMaterials.forEach((material, idx) => {
+                contextPrompt += `\n[DB-${idx + 1}] ${material.material}:`;
+                if (material.short_summary) {
+                  contextPrompt += `\nShort Summary: ${material.short_summary}`;
+                }
+                if (material.summary) {
+                  contextPrompt += `\nSummary: ${material.summary}`;
+                }
+                if (material.symbol) {
+                  contextPrompt += `\nSymbol: ${material.symbol}`;
+                }
+              });
+            }
+            
+            contextPrompt += '\n--- END CONTEXT ---\n';
+          }
+
           // Start both API calls in parallel
-          console.log('🚀 API ROUTE: Starting parallel OpenAI API calls');
-          // 1. Text completion with streaming for the answer
+          console.log('🚀 API ROUTE: Starting parallel OpenAI API calls with RAG context');
+          // 1. Text completion with streaming for the answer (now with RAG context)
           const textCompletionPromise = openai.chat.completions.create({
             model: 'gpt-4.1',
             messages: [
               {
                 role: 'system',
-                content: `You are an AI assistant for Ellen Materials. Respond to user queries about materials science and engineering.
-                When referencing materials, be specific about their properties, applications, and characteristics.
-                Provide detailed, informative responses about materials science topics.`,
+                content: `You are an AI assistant for Ellen Materials with access to a comprehensive materials science database.
+                
+                INSTRUCTIONS:
+                - Use the provided context from documents and materials database to answer questions accurately
+                - When referencing materials, cite specific properties, applications, and characteristics from the context
+                - If context is provided, prioritize information from the context over general knowledge
+                - Be specific about material properties, applications, and engineering characteristics
+                - If asked about materials not in the context, clearly state the limitation
+                
+                CONTEXT SOURCES:
+                - [DOC-X]: Research documents, reports, and technical literature
+                - [VEC-X]: Materials vector database entries with properties and applications
+                - [DB-X]: Structured materials database with specifications and summaries`,
               },
               ...history.map(msg => ({
                 role: msg.role as 'user' | 'assistant',
                 content: msg.content,
               })),
-              { role: 'user', content: message },
+              { role: 'user', content: `${message}${contextPrompt}` },
             ],
             stream: true,
             temperature: 0.7,
             max_tokens: 2000,
           });
           
-          // 2. Structured data extraction using function calling (non-streaming)
+          // 2. Structured data extraction using function calling (non-streaming) - now with RAG context
           const structuredCompletionPromise = openai.chat.completions.create({
-            model: 'gpt-4.1',
+            model: 'gpt-4.1-mini',
             messages: [
               {
                 role: 'system',
-                content: `Extract materials, sources, and suggested follow-up questions from this conversation.
-                Always use the extract_materials_and_suggestions function to provide structured data.`,
+                content: `Extract materials mentioned in the response and suggest follow-up questions.
+                Focus on identifying specific materials, alloys, composites, or chemical compounds discussed.
+                Use the provided context to identify relevant materials and generate contextual follow-up questions.`,
               },
               ...history.map(msg => ({
                 role: msg.role as 'user' | 'assistant',
                 content: msg.content,
               })),
-              { role: 'user', content: message },
+              { role: 'user', content: `${message}${contextPrompt}` },
             ],
             tools: [materialExtractorFunction],
-            tool_choice: { type: "function" as const, function: { name: "extract_materials_and_suggestions" } },
-            temperature: 0.7,
+            tool_choice: { type: 'function', function: { name: 'extract_materials_and_suggestions' } },
+            temperature: 0.3,
             max_tokens: 1000,
           });
           
@@ -398,9 +680,9 @@ export async function POST(req: NextRequest): Promise<Response> {
               messages: [
                 {
                   role: 'system' as const,
-                  content: 'Generate 3 short, relevant follow-up questions based on the conversation. Return them as a JSON array of strings.',
+                  content: 'Generate 3 short, relevant follow-up questions based on the conversation and available context. Focus on materials science topics. Return them as a JSON array of strings.',
                 },
-                { role: 'user' as const, content: `User query: ${message}\nYour response: ${fullResponse}` },
+                { role: 'user' as const, content: `User query: ${message}\nContext available: ${pineconeContext.length > 0 ? 'Yes' : 'No'}\nYour response: ${fullResponse}` },
               ],
               response_format: { type: 'json_object' },
               temperature: 0.7,
