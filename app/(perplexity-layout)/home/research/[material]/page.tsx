@@ -43,7 +43,7 @@ const SubSection = ({ title, children }: { title: string; children: React.ReactN
   </div>
 );
 
-const DataPoint = ({ label, value, unit = '' }: { label: string; value: any; unit?: string }) => (
+const DataPoint = ({ label, value, unit = '' }: { label: string; value: string | number | null; unit?: string }) => (
   <p><span className="font-semibold">{label}:</span> {value ?? 'N/A'}{unit}</p>
 );
 
@@ -69,16 +69,20 @@ const Score = ({ label, value, max = 5 }: { label: string; value: number; max?: 
   );
 };
 
-const JsonValue = ({ jsonString }: { jsonString: string }) => {
+const JsonValue = ({ jsonString }: { jsonString: string | null }) => {
+  if (jsonString === null || jsonString === undefined) {
+    return <p>N/A</p>;
+  }
   try {
     const parsed = JSON.parse(jsonString);
     return <p>{parsed.value ?? 'N/A'}</p>;
-  } catch (error) {
-    return <p>Error parsing data.</p>;
+  } catch {
+    // It might not be a JSON object, but a simple string.
+    return <p>{jsonString}</p>;
   }
 };
 
-const StringArrayDisplay = ({ content, displayAs = 'badges' }: { content: any, displayAs?: 'badges' | 'text' }) => {
+const StringArrayDisplay = ({ content, displayAs = 'badges' }: { content: string | string[] | null, displayAs?: 'badges' | 'text' }) => {
     let items: string[] = [];
 
     if (typeof content === 'string') {
@@ -91,9 +95,9 @@ const StringArrayDisplay = ({ content, displayAs = 'badges' }: { content: any, d
                 // Handles cases like '{"value": ["item1", "item2"]}'
                 items = parsed.value.map(String);
             }
-        } catch (e) {
+        } catch {
             // Not a JSON string, treat as a simple string
-            items = [content];
+            items = [content as string];
         }
     } else if (Array.isArray(content)) {
         items = content.map(item => String(item).replace(/^\d+\.\s*/, '').trim());
@@ -117,7 +121,7 @@ const StringArrayDisplay = ({ content, displayAs = 'badges' }: { content: any, d
 };
 
 const BulletPoints = ({ content }: { content: string }) => (
-  <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ ul: ({node, ...props}) => <ul className="list-disc list-inside space-y-1" {...props} /> }}>
+  <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ ul: ({ ...props}) => <ul className="list-disc list-inside space-y-1" {...props} /> }}>
       {content || 'N/A'}
   </ReactMarkdown>
 );
@@ -148,7 +152,7 @@ const TocSidebar = () => (
   </aside>
 );
 
-export default async function MaterialPage({ params }: { params: { material: string } }) {
+export default async function MaterialPage({ params }: PageProps) {
   const { material } = await params;
   const supabase = await createClient();
   const materialName = decodeURIComponent(material);

@@ -23,6 +23,20 @@
 
 ---
 
+[2025-07-16 12:14] — Increased the size of the Lottie animation on the research index page by 50% for better visual impact.
+
+[2025-07-16 12:13] — Replaced the static icon on the research index page with a more engaging Lottie animation to improve the placeholder UI.
+
+[2025-07-16 12:10] — Fixed the research sidebar layout. Constrained the container to the viewport height and made the sidebar independently scrollable to prevent it from pushing down the main content area.
+
+[2025-07-16 12:01] — Refactored the Research Library from a grid to a two-column layout with a persistent sidebar for improved navigation with a large number of materials.
+
+[2025-07-15 12:30] — Reused the detailed rendering logic from the old dashboard for the new dynamic material pages, ensuring feature parity. Deleted the now-redundant /app/(app)/materials directory to maintain a clean codebase.
+
+[2025-07-15 12:15] — Implemented new Research section under /home/research. Created an index page to display all materials and a dynamic route /home/research/[material] for individual reports.
+
+[2025-07-15 12:00] — Resolved persistent Supabase client error on research page. The issue was a missing 'await' on the createClient() call, which returned a Promise instead of the client instance. This fix unblocked the materials data fetching.
+
 [2025-07-15 11:00] — Created threads_view database view to support the new chat architecture. Fixed 404 errors by creating a SQL view that joins threads and messages tables with proper JSON formatting for user and assistant messages. This enables the useChatSession hook to correctly fetch and display threaded conversations with their associated metadata (sources, materials, suggestions).
 
 [2025-07-14 17:49] — Added comprehensive logging to debug OpenAI response parsing issues. Created logOpenAI Response function that dumps all chunks received from OpenAI streaming API with full JSON structure, special analysis of function call completions, and parsed function arguments. This will help identify why metadata extraction isn't working properly despite streaming appearing to work.
