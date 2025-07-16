@@ -246,9 +246,7 @@ export default function ChatPage() {
                       <button
                         key={index}
                         onClick={() => {
-                          setNewQuery(question);
-                          // Focus the input
-                          document.getElementById('chat-input')?.focus();
+                          sendMessage(question);
                         }}
                         className="w-full text-sm bg-gray-50 hover:bg-gray-100 text-gray-700 px-4 py-3 rounded-lg border border-gray-200 transition-colors text-left flex items-center gap-2"
                       >
