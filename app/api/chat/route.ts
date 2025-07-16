@@ -4,6 +4,21 @@ import OpenAI from 'openai';
 import { extractMaterials } from '../../../lib/materials';
 import { Thread, Source, Material } from '@/app/(perplexity-layout)/home/chat/types';
 
+// Request deduplication cache
+const requestCache = new Map<string, { timestamp: number; processing: boolean }>();
+const CACHE_DURATION = 30000; // 30 seconds
+const CLEANUP_INTERVAL = 60000; // 1 minute
+
+// Cleanup old cache entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of requestCache.entries()) {
+    if (now - value.timestamp > CACHE_DURATION) {
+      requestCache.delete(key);
+    }
+  }
+}, CLEANUP_INTERVAL);
+
 // Pinecone types
 type PineconeDocument = {
   id: string;
@@ -364,11 +379,31 @@ export async function POST(req: NextRequest): Promise<Response> {
       messageLength: message?.length
     });
     
+    // Request deduplication check
+    const requestKey = `${session_id}:${message}`;
+    const now = Date.now();
+    const existingRequest = requestCache.get(requestKey);
+    
+    if (existingRequest) {
+      if (existingRequest.processing) {
+        console.log('🚫 API ROUTE: Duplicate request detected - already processing');
+        return new Response('Request already processing', { status: 429 });
+      }
+      if (now - existingRequest.timestamp < CACHE_DURATION) {
+        console.log('🚫 API ROUTE: Duplicate request detected - too recent');
+        return new Response('Duplicate request', { status: 429 });
+      }
+    }
+    
+    // Mark request as processing
+    requestCache.set(requestKey, { timestamp: now, processing: true });
+    
     // Initialize Supabase client for each request
     const supabase = await createClient();
 
     if (!session_id || !message) {
       console.error('🚀 API ROUTE: Missing required fields:', { session_id: !!session_id, message: !!message });
+      requestCache.delete(requestKey); // Clean up on error
       throw new Error('Missing required fields: session_id and message');
     }
     
@@ -1095,12 +1130,16 @@ ${contextPrompt}`
 
           // Close the stream
           console.log('🚀 API ROUTE: Request completed, closing stream');
+          // Mark request as completed (no longer processing)
+          requestCache.set(requestKey, { timestamp: now, processing: false });
           controller.close();
         } catch (error) {
           console.error('🚀 API ROUTE: Chat API error:', error);
+          // Clean up request cache on error
+          requestCache.delete(requestKey);
           const errorPayload = JSON.stringify({
             type: 'error',
-            error: error instanceof Error ? error.message : 'Unknown error',
+            content: error instanceof Error ? error.message : String(error)
           });
           controller.enqueue(encoder.encode(`${errorPayload}\n`));
           controller.close();
