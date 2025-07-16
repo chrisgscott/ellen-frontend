@@ -80,8 +80,34 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Query classification for web search
-const classifyQuery = (query: string): { needsWebSearch: boolean; searchModel: string | null; searchReason: string } => {
+// Helper function to calculate relevance score for web citations
+const calculateRelevance = (text: string, queryTerms: string[]): number => {
+  const lowerText = text.toLowerCase();
+  let score = 0;
+  
+  for (const term of queryTerms) {
+    if (lowerText.includes(term)) {
+      score += 1;
+    }
+  }
+  
+  // Bonus for exact phrase matches
+  const queryPhrase = queryTerms.join(' ');
+  if (lowerText.includes(queryPhrase)) {
+    score += 2;
+  }
+  
+  return score;
+};
+
+// Helper function to classify queries for web search
+type QueryClassification = {
+  needsWebSearch: boolean;
+  searchModel: string | null;
+  searchReason: string;
+};
+
+const classifyQuery = (query: string): QueryClassification => {
   const queryLower = query.toLowerCase();
   
   // Keywords that indicate need for current/real-time information
@@ -584,13 +610,21 @@ export async function POST(req: NextRequest): Promise<Response> {
               content: queryClassification.needsWebSearch 
                 ? `You are an AI assistant for Ellen Materials with access to both a comprehensive materials science database and real-time web search.
                 
+                CRITICAL: Answer the user's specific question directly. Do not provide generic information or go off-topic.
+                
+                IMPORTANT: If web search results are not relevant to the user's question, IGNORE them completely and focus on the provided context and your knowledge.
+                
                 INSTRUCTIONS:
-                - Use both the provided context from documents/materials database AND current web information to answer questions accurately
+                - FIRST: Read the user's question carefully and focus your entire response on answering that specific question
+                - SECOND: Evaluate if web search results are actually relevant to the question - if not, ignore them
+                - Use both the provided context from documents/materials database AND relevant web information to answer questions accurately
                 - When referencing materials, cite specific properties, applications, and characteristics from both sources
                 - Prioritize current/real-time information for prices, market conditions, and recent developments
                 - Use historical context from the database for technical specifications and established knowledge
                 - Be specific about material properties, applications, and engineering characteristics
                 - Clearly distinguish between historical context and current information
+                - If you cannot find specific information to answer the user's question, say so explicitly
+                - DO NOT discuss topics that are unrelated to the user's question, even if they appear in web search results
                 
                 CONTEXT SOURCES:
                 - [DOC-X]: Research documents, reports, and technical literature
@@ -615,8 +649,17 @@ export async function POST(req: NextRequest): Promise<Response> {
               role: msg.role as 'user' | 'assistant',
               content: msg.content,
             })),
-            { role: 'user' as const, content: `${message}${contextPrompt}` },
+            { role: 'user' as const, content: queryClassification.needsWebSearch ? message : `${message}${contextPrompt}` },
           ];
+          
+          // Debug: Log the final user message content
+          const finalUserMessage = queryClassification.needsWebSearch ? message : `${message}${contextPrompt}`;
+          console.log('🔍 DEBUG: Final user message being sent to OpenAI:', {
+            originalMessage: message,
+            webSearchMode: queryClassification.needsWebSearch,
+            contextLength: queryClassification.needsWebSearch ? 0 : contextPrompt.length,
+            finalContent: finalUserMessage.substring(0, 200) + (finalUserMessage.length > 200 ? '...' : '')
+          });
           
           // 1. Text completion with streaming for the answer (with optional web search)
           const textCompletionConfig = {
@@ -672,7 +715,7 @@ export async function POST(req: NextRequest): Promise<Response> {
                 role: msg.role as 'user' | 'assistant',
                 content: msg.content,
               })),
-              { role: 'user', content: `${message}${contextPrompt}` },
+              { role: 'user', content: queryClassification.needsWebSearch ? message : `${message}${contextPrompt}` },
             ],
             tools: [materialExtractorFunction],
             tool_choice: { type: 'function', function: { name: 'extract_materials_and_suggestions' } },
@@ -703,7 +746,9 @@ export async function POST(req: NextRequest): Promise<Response> {
             
             // Capture web search citations if present (search models only)
             if (queryClassification.needsWebSearch && (chunk as any).choices[0]?.delta?.annotations) {
-              webCitations.push(...(chunk as any).choices[0].delta.annotations);
+              const annotations = (chunk as any).choices[0].delta.annotations;
+              console.log('🌐 WEB SEARCH: Raw annotations:', JSON.stringify(annotations, null, 2));
+              webCitations.push(...annotations);
             }
           }
           
@@ -816,13 +861,62 @@ export async function POST(req: NextRequest): Promise<Response> {
           
           // Add web citations as sources if any were found
           if (webCitations.length > 0) {
-            const webSources = webCitations.map(citation => ({
-              title: citation.title || 'Web Search Result',
-              url: citation.url || '',
-              type: 'web' as const
-            }));
+            // Extract key terms from the original query for relevance filtering
+            const queryTerms = message.toLowerCase().split(/\W+/).filter((term: string) => term.length > 2);
+            console.log('🔍 WEB SEARCH: Query terms for relevance filtering:', queryTerms);
+            
+            const webSources = webCitations.map((citation: any) => {
+              // Handle OpenAI's url_citation format
+              let title = 'Web Search Result';
+              let url = '';
+              
+              if (citation.type === 'url_citation' && citation.url_citation) {
+                // OpenAI's actual format: url_citation object
+                title = citation.url_citation.title || 'Web Search Result';
+                url = citation.url_citation.url || '';
+              } else if (citation.type === 'web_search') {
+                // Alternative web search format
+                title = citation.metadata?.title || citation.title || 'Web Search Result';
+                url = citation.metadata?.url || citation.url || '';
+              } else if (citation.url) {
+                // Direct URL format
+                title = citation.title || citation.metadata?.title || 'Web Search Result';
+                url = citation.url;
+              } else if (citation.metadata) {
+                // Metadata format
+                title = citation.metadata.title || 'Web Search Result';
+                url = citation.metadata.url || '';
+              }
+              
+              // Clean up title and extract domain if needed
+              if (title === 'Web Search Result' && url) {
+                try {
+                  const domain = new URL(url).hostname.replace('www.', '');
+                  title = `${domain} - Web Search Result`;
+                } catch {
+                  // Keep default title if URL parsing fails
+                }
+              }
+              
+              const relevanceScore = calculateRelevance(title + ' ' + url, queryTerms);
+              return {
+                title,
+                url,
+                type: 'web' as const,
+                relevanceScore
+              };
+            }).filter(source => {
+              // Filter out obviously irrelevant results
+              const isRelevant = source.relevanceScore > 0;
+              if (!isRelevant) {
+                console.log('🚫 WEB SEARCH: Filtered out irrelevant citation:', source.title);
+              }
+              return isRelevant;
+            }).map(source => ({ title: source.title, url: source.url, type: source.type })); // Remove relevanceScore from final object
+            
             allSources = [...allSources, ...webSources];
             console.log('🌐 WEB SEARCH: Added', webSources.length, 'web citations to sources');
+            console.log('🌐 WEB SEARCH: Processed sources:', webSources);
           }
           
           if (allSources.length > 0) {
