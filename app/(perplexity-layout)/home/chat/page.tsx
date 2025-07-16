@@ -4,13 +4,19 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { useSession } from './hooks/useSession';
+import { clearInitialQuery } from './hooks/useSessionManagement';
 
 export default function ChatPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const initialQuery = searchParams.get('q');
   const sessionId = searchParams.get('session') || searchParams.get('session_id'); // Support both formats
   const projectId = searchParams.get('project_id');
+  
+  console.log('💬 CHAT PAGE: Component rendered with params:', {
+    sessionId,
+    projectId,
+    searchParams: Object.fromEntries(searchParams.entries())
+  });
   
   const [newQuery, setNewQuery] = useState('');
   
@@ -21,21 +27,53 @@ export default function ChatPage() {
     sendMessage
   } = useSession(sessionId || undefined, projectId || undefined);
   
-  // Handle initial query parameter
+  // Get initial query from session metadata
+  const initialQuery = session?.metadata?.initial_query as string | undefined;
+  
+  // Handle initial query from session metadata
   const handleInitialQuery = useCallback(async () => {
-    if (!initialQuery) return;
-    await sendMessage(initialQuery);
-  }, [initialQuery, sendMessage]);
+    console.log('💬 CHAT PAGE: handleInitialQuery called with:', initialQuery);
+    if (!initialQuery || !sessionId) {
+      console.log('💬 CHAT PAGE: No initial query in session metadata or no session ID, returning');
+      return;
+    }
+    console.log('💬 CHAT PAGE: Sending initial message from session metadata:', initialQuery);
+    try {
+      await sendMessage(initialQuery);
+      // Clear the initial query from session metadata to prevent re-sending on refresh
+      console.log('💬 CHAT PAGE: Clearing initial query from session metadata');
+      await clearInitialQuery(sessionId);
+    } catch (error) {
+      console.error('💬 CHAT PAGE: Error sending initial message or clearing metadata:', error);
+    }
+  }, [initialQuery, sendMessage, sessionId]);
   
   useEffect(() => {
-    // Only send the initial query if there's no session ID
-    // This is for backward compatibility with direct ?q= links
-    if (initialQuery && !sessionId) {
+    console.log('💬 CHAT PAGE: useEffect for initial query triggered:', {
+      initialQuery,
+      sessionId,
+      hasSession: !!session,
+      threadsCount: session?.threads?.length || 0,
+      sessionMetadata: session?.metadata
+    });
+    
+    // Send the initial query if we have one from session metadata and no threads yet
+    if (initialQuery && session && (!session.threads || session.threads.length === 0)) {
+      console.log('💬 CHAT PAGE: Conditions met, calling handleInitialQuery');
       handleInitialQuery();
+      
+      // Clear the initial query from session metadata after using it to prevent re-sending on refresh
+      // We'll do this after the message is sent successfully
+    } else {
+      console.log('💬 CHAT PAGE: Conditions not met for initial query:', {
+        hasInitialQuery: !!initialQuery,
+        hasSessionId: !!sessionId,
+        hasSession: !!session,
+        hasThreads: !!(session?.threads?.length),
+        sessionMetadata: session?.metadata
+      });
     }
-    // If we have a session ID but no threads yet, we don't need to do anything
-    // The session data will be loaded by useSession hook
-  }, [initialQuery, sessionId, handleInitialQuery]);
+  }, [initialQuery, sessionId, handleInitialQuery, session]);
   
   // Update URL with session ID
   useEffect(() => {
@@ -50,8 +88,14 @@ export default function ChatPage() {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newQuery.trim() || isLoading) return;
+    console.log('💬 CHAT PAGE: Form submitted with newQuery:', newQuery.trim());
     
+    if (!newQuery.trim() || isLoading) {
+      console.log('💬 CHAT PAGE: Form submission blocked:', { isEmpty: !newQuery.trim(), isLoading });
+      return;
+    }
+    
+    console.log('💬 CHAT PAGE: Sending new message:', newQuery);
     await sendMessage(newQuery);
     setNewQuery('');
   };

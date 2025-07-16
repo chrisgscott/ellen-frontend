@@ -56,17 +56,42 @@ export async function POST(req: NextRequest): Promise<Response> {
   try {
     const { session_id, message } = await req.json();
     
+    console.log('🚀 API ROUTE: POST /api/chat called with:', {
+      session_id,
+      message: message?.substring(0, 100) + (message?.length > 100 ? '...' : ''),
+      messageLength: message?.length
+    });
+    
     // Initialize Supabase client for each request
     const supabase = await createClient();
 
     if (!session_id || !message) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      console.error('🚀 API ROUTE: Missing required fields:', { session_id: !!session_id, message: !!message });
+      throw new Error('Missing required fields: session_id and message');
     }
+    
+    console.log('🚀 API ROUTE: Validation passed, proceeding with chat logic');
+    
+    // Validate session exists
+    console.log('🚀 API ROUTE: Validating session exists:', session_id);
+    const { data: sessionData, error: sessionError } = await supabase
+      .from('sessions')
+      .select('id, title')
+      .eq('id', session_id)
+      .single();
+      
+    if (sessionError || !sessionData) {
+      console.error('🚀 API ROUTE: Session not found:', sessionError?.message);
+      throw new Error(`Session not found: ${sessionError?.message}`);
+    }
+    
+    console.log('🚀 API ROUTE: Session validated:', {
+      id: sessionData.id,
+      title: sessionData.title
+    });
 
     // Create user message
+    console.log('🚀 API ROUTE: Creating user message in database');
     const { data: userMessageData, error: userMsgError } = await supabase
       .from('messages')
       .insert({
@@ -74,16 +99,19 @@ export async function POST(req: NextRequest): Promise<Response> {
         role: 'user',
         content: message,
       })
-      .select('id')
+      .select('*')
       .single();
 
     if (userMsgError) {
-      console.error('Error creating user message:', userMsgError);
-      return NextResponse.json(
-        { error: 'Failed to create user message' },
-        { status: 500 }
-      );
+      console.error('🚀 API ROUTE: Failed to create user message:', userMsgError?.message);
+      throw new Error(`Failed to create user message: ${userMsgError?.message}`);
     }
+
+    console.log('🚀 API ROUTE: User message created:', {
+      id: userMessageData.id,
+      content: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
+      role: 'user'
+    });
 
     // Create thread with user message
     const { data: threadData, error: threadError } = await supabase
@@ -96,11 +124,8 @@ export async function POST(req: NextRequest): Promise<Response> {
       .single();
 
     if (threadError) {
-      console.error('Error creating thread:', threadError);
-      return NextResponse.json(
-        { error: 'Failed to create thread' },
-        { status: 500 }
-      );
+      console.error('🚀 API ROUTE: Failed to create thread:', threadError?.message);
+      throw new Error(`Failed to create thread: ${threadError?.message}`);
     }
 
     const thread_id = threadData.id;
@@ -140,6 +165,7 @@ export async function POST(req: NextRequest): Promise<Response> {
           });
 
           // Create assistant message in database first
+          console.log('🚀 API ROUTE: Creating assistant message placeholder');
           const { data: assistantMessageData, error: assistantMsgError } = await supabase
             .from('messages')
             .insert({
@@ -151,10 +177,12 @@ export async function POST(req: NextRequest): Promise<Response> {
             .single();
 
           if (assistantMsgError) {
-            throw new Error(`Failed to create assistant message: ${assistantMsgError.message}`);
+            console.error('🚀 API ROUTE: Failed to create assistant message:', assistantMsgError?.message);
+            throw new Error(`Failed to create assistant message: ${assistantMsgError?.message}`);
           }
 
           const assistantMessageId = assistantMessageData.id;
+          console.log('🚀 API ROUTE: Assistant message created:', assistantMessageId);
 
           // Update thread with assistant message ID
           const { error: updateThreadError } = await supabase
@@ -163,10 +191,11 @@ export async function POST(req: NextRequest): Promise<Response> {
             .eq('id', thread_id);
             
           if (updateThreadError) {
-            console.error('Error updating thread with assistant message ID:', updateThreadError);
+            console.error('🚀 API ROUTE: Error updating thread with assistant message ID:', updateThreadError);
           }
-          
+
           // Start both API calls in parallel
+          console.log('🚀 API ROUTE: Starting parallel OpenAI API calls');
           // 1. Text completion with streaming for the answer
           const textCompletionPromise = openai.chat.completions.create({
             model: 'gpt-4.1',
@@ -210,14 +239,17 @@ export async function POST(req: NextRequest): Promise<Response> {
           });
           
           // Process the text completion stream while the structured data is being generated
+          console.log('🚀 API ROUTE: Processing text completion stream');
           const textCompletion = await textCompletionPromise;
           let fullResponse = '';
+          let tokenCount = 0;
           for await (const chunk of textCompletion) {
             if (chunk.choices[0]?.delta?.content) {
               const content = chunk.choices[0].delta.content;
               fullResponse += content;
+              tokenCount++;
               
-              // Stream token to client
+              // Stream token to client (skip logging individual tokens to avoid spam)
               const tokenPayload = JSON.stringify({
                 type: 'token',
                 content,
@@ -226,13 +258,20 @@ export async function POST(req: NextRequest): Promise<Response> {
             }
           }
           
+          console.log('🚀 API ROUTE: Text streaming complete:', {
+            responseLength: fullResponse.length,
+            tokenCount
+          });
+          
           // Update the assistant message with the full response
+          console.log('🚀 API ROUTE: Updating assistant message with full response');
           await supabase
             .from('messages')
             .update({ content: fullResponse })
             .eq('id', assistantMessageId);
           
           // Get the structured completion result (which should be ready by now or soon)
+          console.log('🚀 API ROUTE: Waiting for structured completion');
           const structuredCompletion = await structuredCompletionPromise;
 
           // Process the structured completion to extract data
@@ -246,29 +285,26 @@ export async function POST(req: NextRequest): Promise<Response> {
             
             try {
               extractedData = JSON.parse(functionCallBuffer);
-              console.log('Successfully parsed function call data:', extractedData);
+              console.log('🚀 API ROUTE: Successfully parsed function call data:', extractedData);
             } catch (err) {
-              console.error('Error parsing function call data:', err);
+              console.error('🚀 API ROUTE: Error parsing function call data:', err);
             }
           }
 
-          // Assistant message already updated during text streaming
-
           // Process materials from function call data
+          console.log('🚀 API ROUTE: Processing materials extraction');
           if (extractedData && extractedData.materials && extractedData.materials.length > 0) {
-            // Deduplicate materials
-            const uniqueMaterials = [...new Set(extractedData.materials)];
+            console.log('🚀 API ROUTE: Using structured output material names:', extractedData.materials);
+            const materials = await extractMaterials(fullResponse, extractedData.materials);
             
-            // Look up materials in the database
-            const materials = await extractMaterials(fullResponse, uniqueMaterials);
-            
-            if (materials && materials.length > 0) {
+            if (materials.length > 0) {
+              console.log('🚀 API ROUTE: Found materials, updating thread:', materials.length);
               // Update thread with materials
               await supabase
                 .from('threads')
                 .update({ related_materials: materials })
                 .eq('id', thread_id);
-
+              
               // Send materials to client
               const materialsPayload = JSON.stringify({
                 type: 'materials',
@@ -277,21 +313,23 @@ export async function POST(req: NextRequest): Promise<Response> {
               controller.enqueue(encoder.encode(`${materialsPayload}\n`));
             }
           } else {
-            // Fallback to text-based material extraction if function call didn't provide materials
+            console.log('🚀 API ROUTE: No structured materials, using fallback text extraction');
+            // Fallback to text-based material extraction
             const materials = await extractMaterials(fullResponse);
-            if (materials && materials.length > 0) {
-              // Update thread with materials
+            if (materials.length > 0) {
+              console.log('🚀 API ROUTE: Fallback materials found:', materials.length);
               await supabase
                 .from('threads')
                 .update({ related_materials: materials })
                 .eq('id', thread_id);
-
-              // Send materials to client
+              
               const materialsPayload = JSON.stringify({
                 type: 'materials',
                 content: materials,
               });
               controller.enqueue(encoder.encode(`${materialsPayload}\n`));
+            } else {
+              console.log('🚀 API ROUTE: No materials found in fallback extraction');
             }
           }
 
@@ -311,7 +349,7 @@ export async function POST(req: NextRequest): Promise<Response> {
               });
               controller.enqueue(encoder.encode(`${sourcesPayload}\n`));
             } catch (err) {
-              console.error('Error processing sources:', err);
+              console.error('🚀 API ROUTE: Error processing sources:', err);
             }
           }
 
@@ -350,7 +388,7 @@ export async function POST(req: NextRequest): Promise<Response> {
               const parsedSuggestions = JSON.parse(suggestionsContent);
               suggestions = parsedSuggestions.questions || [];
             } catch (err) {
-              console.error('Error parsing suggestions:', err);
+              console.error('🚀 API ROUTE: Error parsing suggestions:', err);
               suggestions = [];
             }
 
@@ -371,12 +409,13 @@ export async function POST(req: NextRequest): Promise<Response> {
           }
 
           // Close the stream
+          console.log('🚀 API ROUTE: Request completed, closing stream');
           controller.close();
         } catch (error) {
-          console.error('Stream error:', error);
+          console.error('🚀 API ROUTE: Chat API error:', error);
           const errorPayload = JSON.stringify({
             type: 'error',
-            content: error instanceof Error ? error.message : String(error),
+            error: error instanceof Error ? error.message : 'Unknown error',
           });
           controller.enqueue(encoder.encode(`${errorPayload}\n`));
           controller.close();

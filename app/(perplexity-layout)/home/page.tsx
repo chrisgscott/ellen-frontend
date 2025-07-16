@@ -13,19 +13,31 @@ export default function HomePage() {
   const router = useRouter();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  console.log('🏠 HOME PAGE: Component rendered with query:', query);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🏠 HOME PAGE: Form submitted with query:', query.trim());
+    
     if (query.trim() && !isSubmitting) {
       setIsSubmitting(true);
       try {
-        // Create a new session with a descriptive title
+        // Create a new session with a descriptive title and store the initial query
         const sessionTitle = `Chat about: ${query.trim().substring(0, 50)}${query.trim().length > 50 ? '...' : ''}`;
-        const session = await createNewSession(sessionTitle);
+        console.log('🏠 HOME PAGE: Creating session with title:', sessionTitle);
+        console.log('🏠 HOME PAGE: Storing initial query in session metadata');
+        
+        const session = await createNewSession(sessionTitle, null, query.trim());
+        console.log('🏠 HOME PAGE: Session created with initial query:', session);
+        
         // Redirect to the chat page with only the session ID
-        router.push(`/home/chat?session=${session.id}`);
+        const chatUrl = `/home/chat?session=${session.id}`;
+        console.log('🏠 HOME PAGE: Redirecting to:', chatUrl);
+        
+        router.push(chatUrl);
       } catch (error) {
-        console.error('Error creating session:', error);
+        console.error('🏠 HOME PAGE: Error creating session:', error);
         // Show an error message instead of falling back to the old behavior
         alert('Failed to create a chat session. Please try again.');
       } finally {

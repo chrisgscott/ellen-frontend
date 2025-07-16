@@ -45,7 +45,8 @@ export async function fetchSession(id: string): Promise<Session> {
  */
 export async function createNewSession(
   title?: string,
-  projectId?: string | null
+  projectId?: string | null,
+  initialQuery?: string
 ): Promise<Session> {
   try {
     // Create session in database
@@ -54,7 +55,7 @@ export async function createNewSession(
       .insert({ 
         project_id: projectId || null,
         title: title || 'New Chat',
-        metadata: {}
+        metadata: initialQuery ? { initial_query: initialQuery } : {}
       })
       .select('*')
       .single();
@@ -76,6 +77,28 @@ export async function createNewSession(
     };
   } catch (err) {
     console.error('Error creating session:', err);
+    throw err;
+  }
+}
+
+/**
+ * Clear the initial query from session metadata after it's been processed
+ */
+export async function clearInitialQuery(sessionId: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('sessions')
+      .update({ 
+        metadata: {} // Clear all metadata or just remove initial_query
+      })
+      .eq('id', sessionId);
+      
+    if (error) {
+      console.error('Error clearing initial query:', error);
+      throw new Error(error.message);
+    }
+  } catch (err) {
+    console.error('Error clearing initial query:', err);
     throw err;
   }
 }

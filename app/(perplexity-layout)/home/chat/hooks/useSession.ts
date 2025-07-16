@@ -138,9 +138,17 @@ export function useSession(
 
   // Send a message and stream the response
   const sendMessage = useCallback(async (content: string, sessionIdOverride?: string) => {
+    console.log('💬 useSession: sendMessage called with:', {
+      content,
+      sessionIdOverride,
+      currentSessionId: sessionIdOverride || session?.id,
+      hasSession: !!session
+    });
+    
     try {
       // Abort any ongoing requests
       if (abortController) {
+        console.log('💬 useSession: Aborting previous request');
         abortController.abort();
       }
       
@@ -148,19 +156,23 @@ export function useSession(
       setAbortController(newController);
       
       const currentSessionId = sessionIdOverride || session?.id;
+      console.log('💬 useSession: Using session ID:', currentSessionId);
       
       // If no session exists, create one
       if (!currentSessionId) {
+        console.log('💬 useSession: No session ID, creating new session');
         await createSession(content);
         return;
       }
       
       // Create optimistic thread for immediate UI feedback
+      console.log('💬 useSession: Creating optimistic thread');
       const tempThread = createOptimisticThread(currentSessionId, content);
       
       // Update UI with optimistic thread
       setSession(prev => {
         if (!prev) return prev;
+        console.log('💬 useSession: Adding optimistic thread to session');
         return {
           ...prev,
           threads: [...prev.threads, tempThread],
@@ -169,22 +181,28 @@ export function useSession(
       });
       
       // Send message to API
+      const apiPayload = {
+        session_id: currentSessionId,
+        project_id: projectId,
+        message: content
+      };
+      console.log('💬 useSession: Sending API request with payload:', apiPayload);
+      
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          session_id: currentSessionId,
-          project_id: projectId,
-          message: content
-        }),
+        body: JSON.stringify(apiPayload),
         signal: newController.signal
       });
+      
+      console.log('💬 useSession: API response status:', res.status);
       
       if (!res.ok || !res.body) {
         throw new Error(`Stream error: ${res.status} ${res.statusText}`);
       }
       
       // Process streaming response
+      console.log('💬 useSession: Starting to process streaming response');
       const reader = res.body.getReader();
       await processStreamingResponse(
         reader,
@@ -195,17 +213,19 @@ export function useSession(
         (err) => setError(err.message)
       );
       
+      console.log('💬 useSession: Streaming complete, refreshing session');
       // Refresh session from database to get the real thread ID
       await fetchSession(currentSessionId);
       
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') {
-        console.log('Request was aborted');
+        console.log('💬 useSession: Request was aborted');
       } else {
-        console.error('Error sending message:', err);
+        console.error('💬 useSession: Error sending message:', err);
         setError(err instanceof Error ? err.message : String(err));
       }
     } finally {
+      console.log('💬 useSession: sendMessage completed');
       setAbortController(null);
       setSession(prev => prev ? { ...prev, is_loading: false } : null);
     }
