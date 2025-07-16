@@ -1,4 +1,5 @@
 import React from 'react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 import { NewsItem } from './newsfeed-sidebar';
 
@@ -37,6 +38,13 @@ export const ArticleView = ({ article }: ArticleViewProps) => {
     return (
       <div className="flex-1 p-8 h-full flex flex-col items-center justify-center bg-muted/20">
         <div className="text-center">
+          <div className="mx-auto h-80 w-80">
+            <DotLottieReact
+              src="https://lottie.host/9720c7b5-6d97-44d9-b050-26ad388dae01/ZKZ7TylpUm.lottie"
+              loop
+              autoplay
+            />
+          </div>
           <h2 className="text-2xl font-semibold text-foreground mb-2">Select an Article</h2>
           <p className="text-muted-foreground">Choose an item from the news feed to read it here.</p>
         </div>

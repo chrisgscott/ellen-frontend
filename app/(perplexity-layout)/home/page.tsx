@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Newspaper, FlaskConical, Folders } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
 import { createNewSession } from './chat/hooks/useSessionManagement';
 import { createClient } from '@/lib/supabase/client';
@@ -106,7 +107,36 @@ export default function HomePage() {
         </form>
       </div>
 
-
+      {/* Navigation Cards */}
+      <div className="mt-12 w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Link href="/home/news">
+          <Card className="hover:bg-muted/50 transition-colors">
+            <CardHeader>
+              <Newspaper className="h-6 w-6 mb-2 text-primary" />
+              <CardTitle>Recent News</CardTitle>
+              <CardDescription>Catch up on the latest market-moving updates.</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+        <Link href="/home/research">
+          <Card className="hover:bg-muted/50 transition-colors">
+            <CardHeader>
+              <FlaskConical className="h-6 w-6 mb-2 text-primary" />
+              <CardTitle>Research Materials</CardTitle>
+              <CardDescription>Explore intelligence reports on critical materials.</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+        <Link href="/home/spaces">
+          <Card className="hover:bg-muted/50 transition-colors">
+            <CardHeader>
+              <Folders className="h-6 w-6 mb-2 text-primary" />
+              <CardTitle>Your Spaces</CardTitle>
+              <CardDescription>Access your saved research and collections.</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+      </div>
     </div>
   );
 }

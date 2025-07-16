@@ -23,6 +23,12 @@
 
 ---
 
+[2025-07-16 12:30] — Standardized the placeholder styles on the research page to match the news page, ensuring consistent Lottie animation size and text spacing.
+
+[2025-07-16 12:27] — Added a Lottie animation to the news page placeholder for consistency with the research page, improving the UI when no article is selected.
+
+[2025-07-16 12:17] — Added navigation cards to the home page below the main chat input, providing direct links to 'Recent News', 'Research Materials', and 'Your Spaces' to improve user navigation and feature discovery.
+
 [2025-07-16 12:14] — Increased the size of the Lottie animation on the research index page by 50% for better visual impact.
 
 [2025-07-16 12:13] — Replaced the static icon on the research index page with a more engaging Lottie animation to improve the placeholder UI.
