@@ -105,6 +105,12 @@
 
 [2025-07-15 12:15] — Implemented new Research section under /home/research. Created an index page to display all materials and a dynamic route /home/research/[material] for individual reports.
 
+[2025-07-17 15:05] — ✨ UI/DB: Enhanced home page UI by adding a hero container for the welcome message and search bar. Also hid the old dashboard link and cleaned up null-user sessions from the database.
+
+[2025-07-17 14:56] — 📊 DATA: Added missing score columns and populated Aluminum with realistic mock data for demo. Added foreign_influence_score, supply_chain_weaponization_risk, critical_infrastructure_dependency, supply_chain_vulnerability_score, logistics_complexity_score, strategic_importance_score, market_timing_score, and dual_use_potential fields.
+
+[2025-07-17 14:51] — 🚀 DEPLOYED: Added short_summary field display above main content with styled container and conditional rendering. Provides better content hierarchy and user experience.
+
 [2025-07-17 14:38] — 🚀 DEPLOYED: Successfully merged materials UI enhancements to main and pushed to production. Enhanced ToC sidebar with sticky positioning, Ask Ellen integration, and improved visual consistency.
 
 [2025-07-17 14:37] — 🧹 CLEANUP: Removed duplicate Ask Ellen button from page header since the sticky sidebar version provides better accessibility and is always visible.

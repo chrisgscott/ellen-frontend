@@ -84,42 +84,44 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)]">
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 hidden">
         <Link href="/dashboard">
           <Button variant="outline" size="sm">Back to Original Dashboard</Button>
         </Link>
       </div>
-      {/* Logo and Title */}
-      <div className="text-center mb-6 mt-20">
-        <h1 className="text-4xl font-bold text-gray-800 mb-3">{greeting}</h1>
-        <p className="text-lg text-gray-500">I&apos;m ELLEN, your critical materials AI analyst.</p>
-      </div>
+      <div className="w-full max-w-3xl bg-muted p-12 rounded-xl text-center">
+        {/* Logo and Title */}
+        <div className="mb-6">
+          <h1 className="text-4xl font-bold text-gray-800 mb-3">{greeting}</h1>
+          <p className="text-lg text-gray-500">I&apos;m ELLEN, your critical materials AI analyst.</p>
+        </div>
 
-      {/* Search Form */}
-      <div className="w-full max-w-2xl">
-        <form onSubmit={handleSubmit} className="relative">
-          <div className="relative">
-            <Input
-              type="text"
-              placeholder="Ask anything or @mention a Space"
-              className="pl-10 pr-16 py-6 text-base rounded-full border border-input bg-background transition-shadow duration-300 focus:shadow-[0_0_25px_rgba(29,99,139,0.15)] focus:outline-none"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              autoFocus
-            />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
-            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
-              <Button 
-                type="submit" 
-                size="sm" 
-                className="h-8 rounded-full"
-                disabled={!query.trim()}
-              >
-                <Search className="h-4 w-4" />
-              </Button>
+        {/* Search Form */}
+        <div className="w-full max-w-2xl mx-auto">
+          <form onSubmit={handleSubmit} className="relative">
+            <div className="relative">
+              <Input
+                type="text"
+                placeholder="Ask anything or @mention a Space"
+                className="pl-10 pr-16 py-6 text-base rounded-full border border-input bg-background transition-shadow duration-300 focus:shadow-[0_0_25px_rgba(29,99,139,0.15)] focus:outline-none"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                autoFocus
+              />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+                <Button 
+                  type="submit" 
+                  size="sm" 
+                  className="h-8 rounded-full"
+                  disabled={!query.trim()}
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
 
       {/* Navigation Cards */}
