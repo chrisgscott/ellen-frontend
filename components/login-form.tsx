@@ -14,9 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 
-export function LoginForm({
+function LoginFormContent({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
@@ -113,5 +113,13 @@ export function LoginForm({
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export function LoginForm(props: React.ComponentPropsWithoutRef<"div">) {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center p-6">Loading...</div>}>
+      <LoginFormContent {...props} />
+    </Suspense>
   );
 }
