@@ -89,11 +89,11 @@ export default function HomePage() {
           <Button variant="outline" size="sm">Back to Original Dashboard</Button>
         </Link>
       </div>
-      <div className="w-full max-w-3xl bg-primary p-12 rounded-xl text-center">
+      <div className="w-full max-w-3xl bg-primary/5 p-12 rounded-xl text-center">
         {/* Logo and Title */}
         <div className="mb-6">
-          <h1 className="text-4xl font-bold text-white mb-3">{greeting}</h1>
-          <p className="text-lg text-white">I&apos;m ELLEN, your critical materials AI analyst.</p>
+          <h1 className="text-4xl font-bold text-black/90 mb-3">{greeting}</h1>
+          <p className="text-lg text-black/90">I&apos;m ELLEN, your critical materials AI analyst.</p>
         </div>
 
         {/* Search Form */}
@@ -103,7 +103,7 @@ export default function HomePage() {
               <Input
                 type="text"
                 placeholder="How can I help you today?"
-                className="pl-10 pr-16 py-6 text-base rounded-full border border-input bg-background transition-shadow duration-300 focus:shadow-[0_0_25px_rgba(29,99,139,0.15)] focus:outline-none"
+                className="pl-10 pr-16 py-6 text-base rounded-full border border-input/50 bg-background transition-shadow duration-300 focus:shadow-[0_0_25px_rgba(29,99,139,0.15)] focus:outline-none"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 autoFocus
