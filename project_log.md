@@ -101,7 +101,11 @@
 
 [2025-07-15 12:15] — Implemented new Research section under /home/research. Created an index page to display all materials and a dynamic route /home/research/[material] for individual reports.
 
-[2025-07-15 12:00] — Resolved persistent Supabase client error on research page. The issue was a missing 'await' on the createClient() call, which returned a Promise instead of the client instance. This fix unblocked the materials data fetching.
+[2025-07-17 14:19] — ✅ CONFIRMED: Chat streaming works perfectly on production (Render) but is broken locally across ALL branches including main. This is 100% a LOCAL DEVELOPMENT ENVIRONMENT issue, NOT a code problem. We've been chasing our tail trying to fix something that isn't broken in production.
+
+[2025-07-17 14:15] — 🔍 CRITICAL DISCOVERY: Chat streaming works on production (Render) but is broken locally across ALL branches including main. This is NOT a code issue but an ENVIRONMENT-SPECIFIC problem. Streaming failure is local development only.
+
+[2025-07-17 13:34] — 🚨 CRITICAL SYSTEM FAILURE IDENTIFIED: Entire chat system on ui-updates branch is completely broken. Not just Ask Ellen buttons - ALL chat functionality (homepage, articles, materials, direct chat) shows blank screen until full response is ready. NO real-time streaming whatsoever. This is a system-wide streaming failure that needs immediate attention.
 
 [2025-07-15 11:00] — Created threads_view database view to support the new chat architecture. Fixed 404 errors by creating a SQL view that joins threads and messages tables with proper JSON formatting for user and assistant messages. This enables the useChatSession hook to correctly fetch and display threaded conversations with their associated metadata (sources, materials, suggestions).
 
