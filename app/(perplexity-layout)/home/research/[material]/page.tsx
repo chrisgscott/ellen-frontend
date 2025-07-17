@@ -16,6 +16,7 @@ import {
     Users,
     BookCopy
 } from 'lucide-react';
+import { AskEllenButton } from '../_components/ask-ellen-button';
 
 interface PageProps {
   params: {
@@ -170,7 +171,12 @@ export default async function MaterialPage({ params }: PageProps) {
   return (
     <div className="flex-1 p-4 lg:p-8">
         <header className="mb-8">
-            <h1 className="text-4xl font-bold">{materialData.material}</h1>
+            <div className="flex items-center justify-between">
+                <h1 className="text-4xl font-bold">{materialData.material}</h1>
+                <div className="w-48">
+                    <AskEllenButton materialData={materialData} />
+                </div>
+            </div>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 pb-8 border-b">
