@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { Search, ChevronRight } from 'lucide-react';
@@ -13,7 +13,7 @@ import { RelatedMaterialsCard } from '@/components/related-materials-card';
 import { useSession } from './hooks/useSession';
 import { clearInitialQuery } from './hooks/useSessionManagement';
 
-export default function ChatPage() {
+function ChatPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const sessionId = searchParams.get('session') || searchParams.get('session_id'); // Support both formats
@@ -372,5 +372,13 @@ export default function ChatPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+      <ChatPageContent />
+    </Suspense>
   );
 }
