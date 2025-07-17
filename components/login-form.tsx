@@ -44,6 +44,12 @@ function LoginFormContent({
         throw error;
       }
 
+      // Ensure session is properly set before redirecting
+      await supabase.auth.getSession();
+      
+      // Small delay to ensure session propagates
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       // Redirect to the original URL if it exists, otherwise to the dashboard root.
       router.push(redirectTo || "/");
       router.refresh();
