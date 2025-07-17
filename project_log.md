@@ -105,6 +105,8 @@
 
 [2025-07-15 12:15] — Implemented new Research section under /home/research. Created an index page to display all materials and a dynamic route /home/research/[material] for individual reports.
 
+[2025-07-17 14:38] — 🚀 DEPLOYED: Successfully merged materials UI enhancements to main and pushed to production. Enhanced ToC sidebar with sticky positioning, Ask Ellen integration, and improved visual consistency.
+
 [2025-07-17 14:37] — 🧹 CLEANUP: Removed duplicate Ask Ellen button from page header since the sticky sidebar version provides better accessibility and is always visible.
 
 [2025-07-17 14:35] — 🎨 STYLING POLISH: Centered "Overwhelmed?" heading and updated Ask Ellen button to use primary color with white text/icon for better visual consistency with ToC sidebar.

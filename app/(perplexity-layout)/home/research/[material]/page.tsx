@@ -179,6 +179,12 @@ export default async function MaterialPage({ params }: PageProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <main className="md:col-span-3">
+                {materialData.short_summary && (
+                    <div className="mb-6 p-4 bg-muted/30 rounded-lg border-l-4 border-primary">
+                        <p className="text-lg leading-relaxed">{materialData.short_summary}</p>
+                    </div>
+                )}
+                
                 <article className="prose prose-sm dark:prose-invert max-w-none mb-12">
                     <p>{materialData.summary || 'No summary available.'}</p>
                 </article>
