@@ -105,6 +105,18 @@
 
 [2025-07-15 12:15] — Implemented new Research section under /home/research. Created an index page to display all materials and a dynamic route /home/research/[material] for individual reports.
 
+[2025-07-17 14:37] — 🧹 CLEANUP: Removed duplicate Ask Ellen button from page header since the sticky sidebar version provides better accessibility and is always visible.
+
+[2025-07-17 14:35] — 🎨 STYLING POLISH: Centered "Overwhelmed?" heading and updated Ask Ellen button to use primary color with white text/icon for better visual consistency with ToC sidebar.
+
+[2025-07-17 14:34] — 📌 STICKY POSITIONING: Made entire sidebar container (ToC + Ask Ellen section) sticky so both navigation and AI assistance remain visible while scrolling through material details.
+
+[2025-07-17 14:33] — 🎨 UI ENHANCEMENT: Added "Overwhelmed? Just Ask Ellen..." section under ToC sidebar with Ask Ellen button for easy access to AI assistance on material details.
+
+[2025-07-17 14:31] — 🎨 UI IMPROVEMENTS: Enhanced materials ToC sidebar with primary color background, white text, rounded corners, and smooth scrolling functionality. Converted to client component for proper JavaScript interaction.
+
+[2025-07-17 14:21] — ✅ DEPLOYED: Successfully added Ask Ellen button to materials detail page and pushed to production. Created materials-ask-ellen branch, implemented AskEllenButton component with Material type integration, added comprehensive prompt generation, and merged to main. Ready for production testing.
+
 [2025-07-17 14:19] — ✅ CONFIRMED: Chat streaming works perfectly on production (Render) but is broken locally across ALL branches including main. This is 100% a LOCAL DEVELOPMENT ENVIRONMENT issue, NOT a code problem. We've been chasing our tail trying to fix something that isn't broken in production.
 
 [2025-07-17 14:15] — 🔍 CRITICAL DISCOVERY: Chat streaming works on production (Render) but is broken locally across ALL branches including main. This is NOT a code issue but an ENVIRONMENT-SPECIFIC problem. Streaming failure is local development only.

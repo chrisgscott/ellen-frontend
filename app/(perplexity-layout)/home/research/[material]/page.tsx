@@ -17,6 +17,7 @@ import {
     BookCopy
 } from 'lucide-react';
 import { AskEllenButton } from '../_components/ask-ellen-button';
+import TocSidebar from '../_components/toc-sidebar';
 
 interface PageProps {
   params: {
@@ -138,20 +139,7 @@ const reportSections = [
   { id: 'sources-data-quality', title: 'Sources & Data Quality', icon: BookCopy },
 ];
 
-const TocSidebar = () => (
-  <aside className="sticky top-24">
-      <h3 className="font-semibold mb-2 text-lg">On this page</h3>
-      <ul className="space-y-2">
-          {reportSections.map(section => (
-              <li key={section.id}>
-                  <a href={`#${section.id}`} className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                      {section.title}
-                  </a>
-              </li>
-          ))}
-      </ul>
-  </aside>
-);
+
 
 export default async function MaterialPage({ params }: PageProps) {
   const { material } = await params;
@@ -173,9 +161,6 @@ export default async function MaterialPage({ params }: PageProps) {
         <header className="mb-8">
             <div className="flex items-center justify-between">
                 <h1 className="text-4xl font-bold">{materialData.material}</h1>
-                <div className="w-48">
-                    <AskEllenButton materialData={materialData} />
-                </div>
             </div>
         </header>
 
@@ -346,7 +331,14 @@ export default async function MaterialPage({ params }: PageProps) {
 
             </main>
             <div className="hidden lg:block md:col-span-1">
-                <TocSidebar />
+                <div className="sticky top-24 space-y-6">
+                    <TocSidebar sections={reportSections.map(section => ({ id: section.id, title: section.title }))} />
+                    
+                    <div className="bg-muted rounded-lg p-4">
+                        <h3 className="font-semibold mb-3 text-lg text-center">Overwhelmed? Just Ask Ellen!</h3>
+                        <AskEllenButton materialData={materialData} />
+                    </div>
+                </div>
             </div>
         </div>
 

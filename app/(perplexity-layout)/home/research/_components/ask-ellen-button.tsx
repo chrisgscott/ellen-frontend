@@ -40,7 +40,7 @@ Based on this, what are the most critical strategic insights I should be aware o
   };
 
   return (
-    <Button variant="secondary" size="sm" onClick={handleAskEllen} className="w-full bg-white text-primary hover:bg-white/80">
+    <Button variant="default" size="sm" onClick={handleAskEllen} className="w-full bg-primary text-white hover:bg-primary/90">
       <MessageSquare className="w-4 h-4 mr-1" />
       Ask Ellen
     </Button>
