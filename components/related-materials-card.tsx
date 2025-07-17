@@ -13,7 +13,7 @@ export function RelatedMaterialsCard({ material }: RelatedMaterialsCardProps) {
   const symbol = material.symbol ?? `${materialName.charAt(0)?.toUpperCase() ?? 'U'}${materialName.charAt(1)?.toLowerCase() ?? ''}`;
   
   return (
-    <Link href={`/materials/${encodeURIComponent(materialName)}`} target="_blank" rel="noopener noreferrer">
+    <Link href={`/home/research/${encodeURIComponent(materialName)}`} target="_blank" rel="noopener noreferrer">
       <div className="min-w-[240px] max-w-[280px] h-24 flex items-center gap-4 bg-gray-100 hover:shadow-md transition-shadow cursor-pointer rounded-xl border p-4 overflow-hidden">
         {/* Element-like square */}
         <div
