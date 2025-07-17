@@ -44,14 +44,20 @@ function LoginFormContent({
         throw error;
       }
 
+      console.log('[LOGIN] Login successful, checking session...');
+      
       // Ensure session is properly set before redirecting
-      await supabase.auth.getSession();
+      const { data: sessionData } = await supabase.auth.getSession();
+      console.log('[LOGIN] Session after login:', sessionData.session ? 'exists' : 'missing', 'User ID:', sessionData.session?.user?.id);
       
       // Small delay to ensure session propagates
       await new Promise(resolve => setTimeout(resolve, 100));
 
+      const redirectPath = redirectTo || "/";
+      console.log('[LOGIN] Redirecting to:', redirectPath);
+      
       // Redirect to the original URL if it exists, otherwise to the dashboard root.
-      router.push(redirectTo || "/");
+      router.push(redirectPath);
       router.refresh();
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
