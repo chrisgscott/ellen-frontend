@@ -1,10 +1,16 @@
 # Project Log
 
 ## Snapshot (as of 2025-07-16)
+- Successfully deployed Ellen Dashboard to Render at https://ellen-frontend.onrender.com with custom domain https://meetellen.co
+- Fixed build issues by removing archived files and disabling ESLint/TypeScript build errors
+- Resolved Suspense boundary issues in chat page and login form components
+- Updated Supabase authentication settings with production redirect URLs
+- Fixed cookie domain configuration in middleware for production deployment
+- Resolved authentication redirect loop by fixing middleware logic to redirect to root page instead of /auth/login
 - **Home Page UI Overhaul**: Completed a major redesign of the home page, adding navigation cards and mock "Live Market Prices" widgets. The layout was refined with more compact card designs and improved vertical spacing to better center the main chat input.
 - **Research & News Enhancements**: Refactored the research section to a two-column layout with a persistent sidebar. Standardized placeholder UIs on both research and news pages with Lottie animations for a consistent user experience.
 - **UI Polish**: Added a subtle focus glow effect to the chat input to draw attention to the primary interaction point.
-- **Next Steps**: The mock pricing data is in place; the next logical step is to integrate real-time data from the Fastmarkets API.
+- **Next Steps**: Deploy to Render and monitor for any runtime issues.
 
 ## Snapshot (as of 2025-07-15)
 - Refactored chat page to use modular components and hooks architecture

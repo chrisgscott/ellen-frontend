@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
 import { createNewSession } from './chat/hooks/useSessionManagement';
 import { createClient } from '@/lib/supabase/client';
+import { getTimeBasedGreeting } from '@/lib/utils/greetings';
 
 const mockPricingData = [
   { name: 'Lithium Carbonate', price: '13,450.50', change: '+25.50', trend: 'up', unit: 'USD/tonne' },
@@ -21,6 +22,7 @@ const mockPricingData = [
 export default function HomePage() {
   const [query, setQuery] = useState('');
   const [firstName, setFirstName] = useState<string | null>(null);
+  const [greeting, setGreeting] = useState<string>('Hello, there!');
   const router = useRouter();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,6 +46,11 @@ export default function HomePage() {
     };
     fetchProfile();
   }, []);
+
+  // Update greeting when firstName changes or on mount (client-side only)
+  useEffect(() => {
+    setGreeting(getTimeBasedGreeting(firstName));
+  }, [firstName]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,8 +91,8 @@ export default function HomePage() {
       </div>
       {/* Logo and Title */}
       <div className="text-center mb-6 mt-20">
-        <h1 className="text-4xl font-bold text-gray-800 mb-3">Hello, {firstName || 'there'}.</h1>
-        <p className="text-lg text-gray-500">I&apos;m ELLEN, your critical materials AI analyst. How can I help you today?</p>
+        <h1 className="text-4xl font-bold text-gray-800 mb-3">{greeting}</h1>
+        <p className="text-lg text-gray-500">I&apos;m ELLEN, your critical materials AI analyst.</p>
       </div>
 
       {/* Search Form */}
