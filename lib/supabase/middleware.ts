@@ -46,9 +46,6 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Log authentication state for debugging
-  console.log(`[MIDDLEWARE] Path: ${request.nextUrl.pathname}, User: ${user ? 'authenticated' : 'not authenticated'}, UserID: ${user?.id || 'none'}`);
-
   if (
     request.nextUrl.pathname !== "/" &&
     !user &&
@@ -56,7 +53,6 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.startsWith("/auth")
   ) {
     // no user, potentially respond by redirecting the user to the login page
-    console.log(`[MIDDLEWARE] Redirecting to login from: ${request.nextUrl.pathname}`);
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
     return NextResponse.redirect(url);
