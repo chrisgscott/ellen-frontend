@@ -1,27 +1,29 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from '@/lib/supabase/server';
 import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import {
-    Building,
-    BarChart3,
-    PieChart,
-    ShieldCheck,
-    Network,
-    Lightbulb,
-    Users,
-    BookCopy
-} from 'lucide-react';
+import { TocSidebar } from '../_components/toc-sidebar';
+import { Building, BarChart3, PieChart, ShieldCheck, Network, Lightbulb, Users, BookCopy } from 'lucide-react';
 
 interface PageProps {
   params: {
     material: string;
   };
 }
+
+const reportSections = [
+  { id: 'market-overview', title: 'Market Overview', icon: Building },
+  { id: 'trading-intelligence', title: 'Trading Intelligence', icon: BarChart3 },
+  { id: 'investment-analysis', title: 'Investment Analysis', icon: PieChart },
+  { id: 'national-security-assessment', title: 'National Security Assessment', icon: ShieldCheck },
+  { id: 'supply-chain-intelligence', title: 'Supply Chain Intelligence', icon: Network },
+  { id: 'strategic-recommendations', title: 'Strategic Recommendations', icon: Lightbulb },
+  { id: 'key-stakeholders', title: 'Key Stakeholders', icon: Users },
+  { id: 'sources-data-quality', title: 'Sources & Data Quality', icon: BookCopy },
+];
 
 const Section = ({ title, children, icon: Icon, id }: { title: string; children: React.ReactNode; icon?: React.ElementType; id: string }) => (
   <Card id={id} className="mb-8 scroll-mt-24">
@@ -124,32 +126,6 @@ const BulletPoints = ({ content }: { content: string }) => (
   <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ ul: ({ ...props}) => <ul className="list-disc list-inside space-y-1" {...props} /> }}>
       {content || 'N/A'}
   </ReactMarkdown>
-);
-
-const reportSections = [
-  { id: 'market-overview', title: 'Market Overview', icon: Building },
-  { id: 'trading-intelligence', title: 'Trading Intelligence', icon: BarChart3 },
-  { id: 'investment-analysis', title: 'Investment Analysis', icon: PieChart },
-  { id: 'national-security-assessment', title: 'National Security Assessment', icon: ShieldCheck },
-  { id: 'supply-chain-intelligence', title: 'Supply Chain Intelligence', icon: Network },
-  { id: 'strategic-recommendations', title: 'Strategic Recommendations', icon: Lightbulb },
-  { id: 'key-stakeholders', title: 'Key Stakeholders', icon: Users },
-  { id: 'sources-data-quality', title: 'Sources & Data Quality', icon: BookCopy },
-];
-
-const TocSidebar = () => (
-  <aside className="sticky top-24">
-      <h3 className="font-semibold mb-2 text-lg">On this page</h3>
-      <ul className="space-y-2">
-          {reportSections.map(section => (
-              <li key={section.id}>
-                  <a href={`#${section.id}`} className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                      {section.title}
-                  </a>
-              </li>
-          ))}
-      </ul>
-  </aside>
 );
 
 export default async function MaterialPage({ params }: PageProps) {

@@ -19,7 +19,7 @@ export async function ResearchSidebar() {
   const materials = await getMaterials();
 
   return (
-    <div className="h-full border-r flex flex-col">
+        <div className="h-full border-r flex flex-col">
       <div className="p-4">
         <h2 className="text-lg font-semibold">Materials Library</h2>
       </div>
