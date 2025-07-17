@@ -88,7 +88,23 @@ type QueryClassification = {
 const classifyQuery = (query: string): QueryClassification => {
   const queryLower = query.toLowerCase();
   
-  // Keywords that indicate need for current/real-time information - check these FIRST
+  // PRIORITY 1: Portfolio/holdings queries should NEVER use web search - always use tools
+  const portfolioKeywords = [
+    'holding', 'holdings', 'portfolio', 'positions', 'inventory', 'own', 'have',
+    'assets', 'reserves', 'stockpile', 'quantities', 'amounts'
+  ];
+  
+  const hasPortfolioKeywords = portfolioKeywords.some(keyword => queryLower.includes(keyword));
+  
+  if (hasPortfolioKeywords) {
+    return {
+      needsWebSearch: false,
+      searchModel: null,
+      searchReason: `Portfolio/holdings query detected - using tools only to prevent hallucination`
+    };
+  }
+  
+  // PRIORITY 2: Keywords that indicate need for current/real-time information
   const currentKeywords = [
     'current', 'latest', 'recent', 'today', 'now', 'this year', '2024', '2025',
     'price', 'cost', 'market', 'trading', 'stock', 'commodity', 'valued', 'worth', 'deal',
@@ -629,9 +645,9 @@ export async function POST(req: NextRequest): Promise<Response> {
             {
               role: 'system' as const,
               content: queryClassification.needsWebSearch 
-                ? `You are an AI assistant for Ellen Materials with access to both a comprehensive materials science database and real-time web search.
+                ? `You are a specialized critical materials AI analyst with access to both a comprehensive materials database and real-time web search.
                 
-                CRITICAL: Answer the user's specific question directly. Do not provide generic information or go off-topic.
+                CRITICAL: Answer the user's specific question directly. Do not provide generic information or go off-topic. Do not hallucinate data that does not exist in the materials database or web search results.
                 
                 IMPORTANT: If web search results are not relevant to the user's question, IGNORE them completely and focus on the provided context and your knowledge.
                 
@@ -652,7 +668,7 @@ export async function POST(req: NextRequest): Promise<Response> {
                 - [VEC-X]: Materials vector database entries with properties and applications
                 - [DB-X]: Structured materials database with specifications and summaries
                 - [WEB]: Current web search results with real-time information`
-                : `You are an AI assistant for Ellen Materials with access to a comprehensive materials science database.
+                : `You are an critical materials AI analyst with access to a comprehensive critical and strategic materials database.
                 
                 INSTRUCTIONS:
                 - Use the provided context from documents and materials database to answer questions accurately
@@ -725,13 +741,19 @@ export async function POST(req: NextRequest): Promise<Response> {
                 - For portfolio analysis, holdings summary, positions, or "what do we own": Call get_portfolio_summary
                 - For geopolitical risk analysis, supply chain disruptions, or crisis scenarios: Call monitor_geopolitical_risks  
                 - Always call extract_materials_and_suggestions to identify materials, sources, and generate follow-up questions
+
+                 DATA INTEGRITY RULES:
+                 - NEVER fabricate or estimate portfolio figures. Use only numbers returned by tools or provided in context.
+                 - If a tool returns NO DATA for a requested material (e.g., Antimony holdings not found), explicitly state that no holdings exist or data is unavailable.
+                 - If the information is unknown or missing, respond with "Data not found" rather than guessing or hallucinating.
+                 - When summarizing portfolio data, cite the specific tool outputs and avoid adding any numbers that were not in those outputs.
                 
                 MATERIALS: Focus on identifying specific materials, alloys, composites, or chemical compounds discussed.
                 
                 SOURCES: Extract sources from the context that were referenced in the response. Create meaningful source titles:
                 - For [DOC-X] references: Use the document title/filename if available, or create descriptive titles like "Technical Report on [Topic]" or "Research Study: [Subject]"
                 - For [VEC-X] references: Use format "Materials Database - [Material Name] Properties" 
-                - For [DB-X] references: Use format "Ellen Materials Database - [Material Name]"
+                - For [DB-X] references: Use format "Internal Database - [Material Name]"
                 - For [WEB] references: Use the actual website titles and URLs from web search results
                 - Always provide descriptive, user-friendly titles rather than generic references
                 - If multiple sources cover the same topic, consolidate them appropriately

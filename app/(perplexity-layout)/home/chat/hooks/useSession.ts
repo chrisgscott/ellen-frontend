@@ -198,6 +198,18 @@ export function useSession(
       console.log('💬 useSession: API response status:', res.status);
       
       if (!res.ok || !res.body) {
+        if (res.status === 429) {
+          // Gracefully handle "Too Many Requests" without crashing
+          const errorText = await res.text();
+          console.warn('🚫 useSession: Received 429 status. Server is busy or request is a duplicate.');
+          setError(errorText || 'Server is busy, please try again in a moment.');
+          // Remove the optimistic thread since the request failed
+          setSession(prev => {
+            if (!prev) return prev;
+            return { ...prev, threads: prev.threads.slice(0, -1) };
+          });
+          return; // Stop further processing
+        }
         throw new Error(`Stream error: ${res.status} ${res.statusText}`);
       }
       
