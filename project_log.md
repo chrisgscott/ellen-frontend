@@ -1,5 +1,9 @@
 # Project Log
 
+[2025-07-17 13:34] — 🚨 CRITICAL SYSTEM FAILURE IDENTIFIED: Entire chat system on ui-updates branch is completely broken. Not just Ask Ellen buttons - ALL chat functionality (homepage, articles, materials, direct chat) shows blank screen until full response is ready. NO real-time streaming whatsoever. This is a system-wide streaming failure that needs immediate attention.
+
+[2025-07-17 13:24] — Analyzed working Ask Ellen button flow on main branch. Found that article detail page (ArticleView component) and material detail page (AskEllenButton component) both use same pattern: createNewSession(title, null, prompt) where prompt contains full context, then redirect to /home/chat?session=${sessionId}. Chat page picks up initial_query from session metadata and auto-sends it. Need to fix chat page streaming on ui-updates branch to match main branch logic.
+
 [2025-07-16 15:15] — ✅ COMPLETE SUCCESS: Ellen's tool integration fully operational. Verified intelligent query classification working across multiple scenarios: opportunities queries call get_high_impact_opportunities, risk/market queries call monitor_geopolitical_risks. Both tools return real data, populate Related Materials carousel, and provide rich contextual responses. System ready for demo.
 
 [2025-07-16 15:11] — Fixed opportunities API authentication issue. Switched from user-authenticated Supabase client to service role client using SUPABASE_SERVICE_KEY to bypass RLS policies. API now successfully returns $800M DoD Emergency Procurement opportunity with "Rare earth elements" material data.
