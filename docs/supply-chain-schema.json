@@ -1,0 +1,199 @@
+-- ============================================================================
+-- SUPPLY ROUTE MAPPING EXTENSIONS
+-- Additional tables needed for comprehensive supply chain visualization
+-- ============================================================================
+
+-- Geographic locations (ports, facilities, checkpoints)
+CREATE TABLE locations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    location_type TEXT CHECK (location_type IN ('mine', 'processing_facility', 'warehouse', 'port', 'airport', 'border_crossing', 'customer_facility')),
+    country TEXT NOT NULL,
+    city TEXT,
+    latitude DECIMAL(10,8),
+    longitude DECIMAL(11,8),
+    is_secure_facility BOOLEAN DEFAULT false,
+    security_level TEXT,
+    operational_status TEXT CHECK (operational_status IN ('active', 'disrupted', 'closed', 'seasonal')),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Transportation routes between locations
+CREATE TABLE transport_routes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    origin_location_id UUID REFERENCES locations(id),
+    destination_location_id UUID REFERENCES locations(id),
+    transport_mode TEXT CHECK (transport_mode IN ('air', 'sea', 'rail', 'truck', 'pipeline')),
+    distance_km INTEGER,
+    typical_duration_days INTEGER,
+    cost_per_kg NUMERIC,
+    capacity_kg_per_shipment INTEGER,
+    frequency_per_month INTEGER,
+    risk_level TEXT CHECK (risk_level IN ('low', 'medium', 'high', 'critical')),
+    risk_factors JSONB, -- ["weather", "piracy", "sanctions", "infrastructure"]
+    is_active BOOLEAN DEFAULT true,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Actual shipment tracking
+CREATE TABLE shipments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    material_id UUID REFERENCES materials(id),
+    supplier_id UUID REFERENCES litore_suppliers(id),
+    customer_id UUID REFERENCES litore_customers(id),
+    quantity_kg NUMERIC NOT NULL,
+    origin_location_id UUID REFERENCES locations(id),
+    destination_location_id UUID REFERENCES locations(id),
+    route_id UUID REFERENCES transport_routes(id),
+    shipment_status TEXT CHECK (shipment_status IN ('planned', 'in_transit', 'delayed', 'customs', 'delivered', 'cancelled')),
+    departure_date DATE,
+    expected_arrival_date DATE,
+    actual_arrival_date DATE,
+    tracking_number TEXT,
+    insurance_value_usd NUMERIC,
+    current_location TEXT,
+    security_escort BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Chokepoints and critical infrastructure
+CREATE TABLE chokepoints (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL, -- "Suez Canal", "Strait of Hormuz", "China-Kazakhstan Border"
+    chokepoint_type TEXT CHECK (chokepoint_type IN ('strait', 'canal', 'border', 'airport', 'port', 'bridge', 'tunnel')),
+    latitude DECIMAL(10,8),
+    longitude DECIMAL(11,8),
+    controlled_by_country TEXT,
+    geopolitical_risk_score SMALLINT CHECK (geopolitical_risk_score BETWEEN 1 AND 5),
+    materials_affected TEXT[], -- materials that commonly pass through
+    disruption_probability DECIMAL(3,2), -- 0.00 to 1.00
+    economic_impact_if_disrupted NUMERIC,
+    alternative_routes_available BOOLEAN DEFAULT false,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Supply chain vulnerabilities
+CREATE TABLE supply_chain_risks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    material_id UUID REFERENCES materials(id),
+    risk_type TEXT CHECK (risk_type IN ('single_source', 'geographic_concentration', 'political_instability', 'infrastructure_weakness', 'weather_seasonal', 'regulatory')),
+    affected_locations UUID[] REFERENCES locations(id),
+    affected_routes UUID[] REFERENCES transport_routes(id),
+    risk_description TEXT,
+    probability DECIMAL(3,2), -- 0.00 to 1.00
+    potential_impact_days INTEGER, -- supply disruption duration
+    mitigation_strategies TEXT[],
+    monitoring_required BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================================
+-- SAMPLE DATA FOR ROUTE MAPPING
+-- ============================================================================
+
+-- Key locations in Litore's network
+INSERT INTO locations (name, location_type, country, city, latitude, longitude, is_secure_facility, security_level) VALUES
+('Dubai Secure Storage Facility A', 'warehouse', 'UAE', 'Dubai', 25.2048, 55.2708, true, 'high'),
+('Frankfurt Strategic Materials Warehouse', 'warehouse', 'Germany', 'Frankfurt', 50.1109, 8.6821, true, 'nato-certified'),
+('Zurich Precious Metals Vault', 'warehouse', 'Switzerland', 'Zurich', 47.3769, 8.5417, true, 'maximum'),
+('Istanbul Advanced Materials Facility', 'warehouse', 'Turkey', 'Istanbul', 41.0082, 28.9784, true, 'nato-certified'),
+('Hamburg Industrial Storage Complex', 'warehouse', 'Germany', 'Hamburg', 53.5511, 9.9937, true, 'nato-certified'),
+('Port of Hamburg', 'port', 'Germany', 'Hamburg', 53.5395, 9.9066, false, 'commercial'),
+('Dubai International Airport', 'airport', 'UAE', 'Dubai', 25.2532, 55.3657, false, 'commercial'),
+('Frankfurt Airport', 'airport', 'Germany', 'Frankfurt', 50.0379, 8.5622, false, 'commercial'),
+('Suez Canal', 'strait', 'Egypt', 'Suez', 30.0131, 32.5498, false, 'critical'),
+('Strait of Hormuz', 'strait', 'Iran/UAE', 'Hormuz', 26.5667, 56.2500, false, 'critical');
+
+-- Transportation routes
+INSERT INTO transport_routes (origin_location_id, destination_location_id, transport_mode, distance_km, typical_duration_days, cost_per_kg, risk_level, risk_factors) VALUES
+-- Dubai to US customers (air freight for high-value osmium)
+((SELECT id FROM locations WHERE name = 'Dubai International Airport'), 
+ (SELECT id FROM locations WHERE name = 'Frankfurt Airport'), 
+ 'air', 5100, 1, 25.00, 'low', '["weather_delays"]'),
+
+-- Frankfurt to US (standard air freight)
+((SELECT id FROM locations WHERE name = 'Frankfurt Airport'),
+ (SELECT id FROM locations WHERE name = 'Frankfurt Airport'), -- placeholder for US destination
+ 'air', 7000, 2, 15.00, 'low', '["customs_delays"]'),
+
+-- Sea route through Suez (bulk aluminum)
+((SELECT id FROM locations WHERE name = 'Port of Hamburg'),
+ (SELECT id FROM locations WHERE name = 'Suez Canal'),
+ 'sea', 3200, 12, 2.50, 'medium', '["piracy", "canal_delays", "weather"]');
+
+-- Critical chokepoints affecting Litore's supply
+INSERT INTO chokepoints (name, chokepoint_type, latitude, longitude, controlled_by_country, geopolitical_risk_score, materials_affected, disruption_probability, alternative_routes_available) VALUES
+('Suez Canal', 'canal', 30.0131, 32.5498, 'Egypt', 3, ARRAY['Aluminum', 'Copper', 'Palladium'], 0.15, true),
+('Strait of Hormuz', 'strait', 26.5667, 56.2500, 'Iran', 4, ARRAY['Osmium', 'Gallium', 'Rare earth elements'], 0.25, false),
+('Frankfurt Airport Hub', 'airport', 50.0379, 8.5622, 'Germany', 2, ARRAY['Osmium', 'Gallium', 'Lithium isotopes'], 0.05, true),
+('Turkey-EU Border', 'border', 41.2431, 28.1459, 'Turkey/EU', 3, ARRAY['Copper', 'Palladium'], 0.20, true);
+
+-- ============================================================================
+-- ROUTE MAPPING QUERIES
+-- ============================================================================
+
+/*
+-- Map complete supply routes for a specific material
+WITH material_routes AS (
+    SELECT 
+        m.material,
+        s.supplier_name,
+        s.supplier_country,
+        origin.name as origin_facility,
+        dest.name as destination_facility,
+        tr.transport_mode,
+        tr.typical_duration_days,
+        tr.risk_level,
+        tr.risk_factors
+    FROM litore_suppliers s
+    JOIN materials m ON s.material_id = m.id
+    JOIN locations origin ON origin.country = s.supplier_country
+    JOIN transport_routes tr ON tr.origin_location_id = origin.id
+    JOIN locations dest ON tr.destination_location_id = dest.id
+    WHERE m.material = 'Gallium'
+)
+SELECT * FROM material_routes;
+
+-- Identify supply chain vulnerabilities
+SELECT 
+    m.material,
+    c.name as chokepoint,
+    c.geopolitical_risk_score,
+    c.disruption_probability,
+    c.alternative_routes_available,
+    COUNT(tr.id) as routes_affected
+FROM materials m
+JOIN chokepoints c ON m.material = ANY(c.materials_affected)
+LEFT JOIN transport_routes tr ON (
+    tr.origin_location_id IN (
+        SELECT id FROM locations 
+        WHERE ST_DWithin(
+            ST_Point(longitude, latitude), 
+            ST_Point(c.longitude, c.latitude), 
+            100000 -- 100km radius
+        )
+    )
+)
+GROUP BY m.material, c.name, c.geopolitical_risk_score, c.disruption_probability, c.alternative_routes_available
+ORDER BY c.geopolitical_risk_score DESC, c.disruption_probability DESC;
+
+-- Real-time shipment tracking
+SELECT 
+    m.material,
+    sh.quantity_kg,
+    origin.name as from_location,
+    dest.name as to_location,
+    sh.shipment_status,
+    sh.expected_arrival_date,
+    sh.current_location,
+    tr.risk_level
+FROM shipments sh
+JOIN materials m ON sh.material_id = m.id
+JOIN locations origin ON sh.origin_location_id = origin.id
+JOIN locations dest ON sh.destination_location_id = dest.id
+JOIN transport_routes tr ON sh.route_id = tr.id
+WHERE sh.shipment_status IN ('in_transit', 'delayed', 'customs')
+ORDER BY sh.expected_arrival_date;
+*/

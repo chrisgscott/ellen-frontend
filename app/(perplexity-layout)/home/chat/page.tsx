@@ -27,6 +27,7 @@ function ChatPageContent() {
   
   const [newQuery, setNewQuery] = useState('');
   const threadRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const initialQuerySentRef = useRef(false); // Add this ref to track submission
   
   const {
     session,
@@ -76,12 +77,20 @@ function ChatPageContent() {
   // Handle initial query from session metadata
   const handleInitialQuery = useCallback(async () => {
     console.log('💬 CHAT PAGE: handleInitialQuery called with:', initialQuery);
+    
+    // Prevent duplicate submissions from React Strict Mode
+    if (initialQuerySentRef.current) {
+      console.log('💬 CHAT PAGE: Initial query already sent, skipping.');
+      return;
+    }
+    
     if (!initialQuery || !sessionId) {
       console.log('💬 CHAT PAGE: No initial query in session metadata or no session ID, returning');
       return;
     }
     console.log('💬 CHAT PAGE: Sending initial message from session metadata:', initialQuery);
     try {
+      initialQuerySentRef.current = true; // Mark as sent immediately
       await sendMessage(initialQuery);
       // Clear the initial query from session metadata to prevent re-sending on refresh
       console.log('💬 CHAT PAGE: Clearing initial query from session metadata');
