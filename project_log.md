@@ -1,5 +1,10 @@
 # Project Log
 
+## Snapshot (as of 2025-07-17)
+- Branding polished with a new browser title and favicon.
+- Navigation fixed: `RelatedMaterialsCard` now links to the correct research pages and opens in a new tab to preserve chat context.
+- Ready for next set of UI/UX improvements or feature development.
+
 [2025-07-17 13:34] — 🚨 CRITICAL SYSTEM FAILURE IDENTIFIED: Entire chat system on ui-updates branch is completely broken. Not just Ask Ellen buttons - ALL chat functionality (homepage, articles, materials, direct chat) shows blank screen until full response is ready. NO real-time streaming whatsoever. This is a system-wide streaming failure that needs immediate attention.
 
 [2025-07-17 13:24] — Analyzed working Ask Ellen button flow on main branch. Found that article detail page (ArticleView component) and material detail page (AskEllenButton component) both use same pattern: createNewSession(title, null, prompt) where prompt contains full context, then redirect to /home/chat?session=${sessionId}. Chat page picks up initial_query from session metadata and auto-sends it. Need to fix chat page streaming on ui-updates branch to match main branch logic.
@@ -104,6 +109,10 @@
 [2025-07-15 12:30] — Reused the detailed rendering logic from the old dashboard for the new dynamic material pages, ensuring feature parity. Deleted the now-redundant /app/(app)/materials directory to maintain a clean codebase.
 
 [2025-07-15 12:15] — Implemented new Research section under /home/research. Created an index page to display all materials and a dynamic route /home/research/[material] for individual reports.
+
+[2025-07-17 16:35] — ✨ UI: Set the application's favicon to the Ellen logo SVG for consistent branding.
+
+[2025-07-17 16:34] — ✨ UI: Updated the application's browser tab title to "Ellen | AI Critical Materials Analyst" for better branding and context.
 
 [2025-07-17 15:27] — 🐞 FIX & UX: Updated `RelatedMaterialsCard` to link to the new `/home/research/[material]` route. Confirmed links should open in a new tab (`target="_blank"`) to preserve chat context.
 
