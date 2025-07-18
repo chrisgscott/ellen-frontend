@@ -1,0 +1,104 @@
+DEFENSE LOGISTICS AGENCY
+HIGH PURITY ALUMINUM
+REQUEST FOR INFORMATION
+
+1.	DISCLAIMER:  This request for information (RFI)  is for planning purposes only and is not a request for quote (RFQ), invitation for bid (IFB), or an obligation on the part of the government to acquire any supplies or services.  Responses to this RFI  are not quotes or offers and cannot be accepted by the government to form a binding contract.  The government will determine if/how to proceed based on the results of this notice.  Companies that respond to this notice should not expect to receive feedback regarding submissions.  The government will not pay any costs incurred in response to this notice.  All costs associated with responding to this RFI  will be solely at the expense of the responding party.  The information provided in this notice is subject to change and is not binding on the government.
+
+2.	LOCATION:  Hawthorne Depot: Pole Lane Road, 1 South Maine Ave, BLDG 110-66B, 
+                                                        Hawthorne, NV 89415
+         & Hammond Depot: 3200 Sheffield Avenue, Hammond, IN 46327-1003
+
+3.	SCOPE OF WORK:  The Defense Logistics Agency (DLA) Strategic Materials Directorate is seeking information for the potential acquisition of 130,000 metric tons of high purity aluminum.  
+
+4.	DESCRIPTION OF INFORMATION REQUESTED:  All interested vendors with experience/capabilities as outlined above must provide a capability statement that includes the following:
+A.	GENERAL DATA
+i.	Company name.
+ii.	GSA contract number if applicable.
+iii.	Other government-wide contracts/numbers if applicable (e.g., SEWP, JETS, ESI, etc.).
+iv.	Socioeconomic status(es).
+v.	CAGE code.
+vi.	UEI number.
+vii.	Size of business relative to NAICS code.
+viii.	Mailing address.
+ix.	Name, telephone number, and email address for primary point of contact (POC) with the authority and knowledge to clarify responses with government representatives and can verify the demonstrated capabilities.
+x.	Any questions or clarification requests regarding the requirement.
+xi.	Examples of direct experience as a prime contractor performing the stated work – please provide the contract number, agency, the scope/value of the contract, the length of the contract, the functions you did under the contract, and/or the role your company played.
+xii.	Examples of relevant non-prime experience performing the stated work – please provide the contract number, agency, the scope/value of the contract, the length of the contract, the functions you did under the contract, and/or the role your company played.
+xiii.	Identify any regulations, certifications, or equipment you have or have used, that are necessary to the function of this requirement.
+xiv.	Identify your intentions to team or subcontract any work and what percentage of work you are capable of in your own right and what percentage you are subcontracting to similarly situated small businesses and what percentage to other than small businesses (large or non-profit entities).
+xv.	If you have been mainly a subcontractor, do you have the skill to manage the contract as a prime?  
+xvi.	Does your company have the financial resources to support this effort?  Payments are typically made within 30 days of invoice acceptance and invoices are submitted in arrears.  If not, then from whom will you get your credit line?  Do you already have a credit line?  Can you get one big enough to support this contract?  Provide your creditor’s name and the amount you can cover.
+B.	HIGH PURITY ALUMINUM INFORMATION
+i.	What is unit of measure that you use to price the required material and is this unit of measure industry standard?
+ii.	From where are your raw materials sourced?  If there are multiple sources, please estimate what percentage of materials comes from which location.
+iii.	What is your annual overall production/throughput/consumption of high purity aluminum?  Please respond using the unit of measure listed in ‘B.i’ above.
+iv.	How much raw material for high purity aluminum is stockpiled, if any, and how often is the inventory replenished?
+v.	How does the time of year affect the availability of the material?
+vi.	Which grades of high purity aluminum from the following types do you provide?
+1.	P0101A, P0202A, P0404A.
+2.	If there are any other high-purity aluminum grades that you provide, please list them accordingly.
+3.	Are any of the grades listed produced per industry material specifications?  If so, please list which material specifications apply.
+vii.	What downstream aluminum alloys require the use of the grades listed in ‘B.vi’ above?  If known, can you please identify the specific high purity aluminum grade required for producing each aluminum alloy listed? 
+viii.	Rank the high purity aluminum grades listed in ‘B.vi’ above by order of demand from highest to lowest.
+1.	What are the annual demand quantities for each grade listed?
+2.	Of these quantities, how much is for defense applications, if known?
+ix.	Include end use applications for the grades listed in ‘B.vi’ above for both civilian and defense. 
+x.	In what form(s) do you sell this material (e.g., blocks, ingot, powder, etc.)?
+1.	What common sizes are these forms produced in (e.g., block/ingot dimensions, particle size, etc.)?
+2.	In what unit of quantity are these forms produced (e.g., per lot, per heat, per batch, etc.)?
+3.	How is this unit of quantity defined?
+xi.	Please include any comparable safety data sheet (SDS) and certificates of analyses (COA) for products your company provides.
+C.	HIGH PURITY ALUMINUM TESTING
+i.	Please list the crucial impurities that have adverse effects on performance.
+1.	What are the limits of these impurities in products that are specified?
+2.	How are these impurities tested (frequency, location, etc.)? 
+3.	Please list the applicable test specifications and method for each element/impurity.
+ii.	Please list any other tests that may be performed on the material.
+1.	What are the associated testing requirements of each test (property limits, minimums, frequency, location, etc.)?
+2.	Please list the applicable test specifications and method for each test.
+iii.	For the tests listed above, are these tests performed at your internal laboratory, an external laboratory, or both?
+1.	Please indicate internal or external laboratory testing for each test listed.
+2.	If you send samples to an external laboratory, which laboratory do you use? 
+iv.	Is there an expected percentage of material to be lost during testing?
+D.	STORAGE
+i.	What are the common storage conditions for high purity aluminum and are there any concerns about long term storage under these conditions? 
+ii.	How long is high purity aluminum typically stored prior to use?
+iii.	The material will be delivered to and stored at a government depot.  It is not uncommon for National Defense Stockpile (NDS) inventory to be stored for periods of time exceeding 25 years, so please provide the following information:
+1.	What is the maximum obtainable shelf life for high-purity aluminum?
+2.	Under what storage conditions can this shelf life be achieved? 
+3.	Material rotation requirements:  does stockpiled material need to be removed and replenished with new material at any point during long term storage?  If so, please explain the requirements.
+iv.	Please provide information on environmental impact and regulations of high-purity aluminum. 
+E.	DELIVERY INFORMATION
+i.	What is your typical turnaround time for high purity aluminum from the date of receiving an award to delivery?
+ii.	Do you typically use subcontractors to produce/provide this material or service?
+iii.	From where would the deliveries originate?  If there are multiple locations, please list all locations.
+iv.	What is your delivery capacity per year?
+v.	What is your typical unit of sale (e.g., pounds, kilograms, short tons, metric tons)?
+vi.	What is the estimated delivery timeframe for 130,000 metric tons?
+vii.	Do you provide spot deliveries?  If so, how much could you typically provide and in what timeframe could you deliver?
+viii.	Does your company offer a discount for either long-term supply orders or large volume orders? 
+ix.	What is the preferred delivery method? 
+x.	What is the preferred method of packaging?  Please describe any requirements (crates for handling, boxes, padding, wrapping, stacking, etc.).
+xi.	What is the industry standard for packaging?  How is cracked/chipped/damaged material typically handled?
+xii.	Is there an expected percentage of material to be lost during delivery or storage?
+xiii.	Are there any safety concerns with packing or transporting this material?
+xiv.	Are there any restrictions or other information you deem pertinent to deliveries?
+F.	MARKET INFORMATION
+i.	Please provide a rough order of magnitude for the various grades listed in ‘B.vi’ above.
+ii.	In the next two to five years, are there any anticipated manufacturing process changes, mature technology development programs, or shifts in end-user requirements that are likely to result in a change in the material?  If so, what are they?
+iii.	In the next two to five years, are there any anticipated material substitutions that may drive a transition towards or away from the use of high purity aluminum that will affect the demand of the material?  If so, what are they?
+iv.	Are there frequent changes in the market price for this material?  If yes, how do you address those changes?
+v.	What customer market sector(s) (e.g., defense, aerospace, commercial, automotive) purchases your material?
+vi.	What additional amount of material per year could you deliver without disrupting deliveries to your current customers by hiring additional personnel or expanding output capacity?
+vii.	Please describe your supply chain of high purity aluminum from source of the material to final processing, specifically indicating any instances where the material is not located in the continental United States (CONUS). 
+1.	Please describe issues you observe affecting your current supply chain.
+2.	Please describe any potential issues you envision that may have a significant impact on your supply chain.
+G.	ADDITIONAL INFORMATION
+i.	Please provide a copy of a redacted commercial contract that includes your standard terms and conditions.
+ii.	Do you have provisions for agreements longer than one year?  If so, what is the maximum agreement length?
+iii.	Please provide sales data identifying the percentage of material sold to the government and the percentage of material sold to the public.
+iv.	Provide any lessons learned from current or previous contract awards.
+
+5.	Any information provided by industry to the government in response to this RFI is strictly voluntary.  Responses will not be returned.  As a reminder, no entitlements to payment of any direct or indirect costs or changes to the government will arise as a result of vendor submission of responses or the government’s use of such information.  The information obtained from industry responses to this notice may be used in the development of an acquisition strategy and a future RFQ if applicable.  The limit for all responses is 30 pages single-sided in Microsoft Word or Adobe PDF format with a maximum of 12-point font on an 8.5 x 11 page with margins of 1”.
+
+6.	Interested vendors should submit their response through email to the contract specialist, Zoryanna Siemer at zoryanna.siemer@dla.mil with “RFI – High Purity Aluminum” in the subject line.  Responses must be received by 5pm EDT June 6, 2025.  It is the vendor’s responsibility to ensure the email was received and is viewable.

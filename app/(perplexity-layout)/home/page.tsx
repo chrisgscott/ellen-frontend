@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Newspaper, FlaskConical, Folders, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Newspaper, FlaskConical, Folders, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { ChatInput } from '@/components/chat-input';
 import { useRouter } from 'next/navigation';
 import { createNewSession } from './chat/hooks/useSessionManagement';
 import { createClient } from '@/lib/supabase/client';
@@ -23,6 +23,7 @@ export default function HomePage() {
   const [query, setQuery] = useState('');
   const [firstName, setFirstName] = useState<string | null>(null);
   const [greeting, setGreeting] = useState<string>('Hello, there!');
+  const [currentSessionId, setCurrentSessionId] = useState<string | undefined>(undefined);
   const router = useRouter();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,6 +83,21 @@ export default function HomePage() {
     }
   };
 
+  const handleDocumentUpload = async () => {
+    if (!currentSessionId) {
+      try {
+        console.log('🏠 HOME PAGE: Creating session for document upload');
+        const session = await createNewSession('Document Upload Session', null, undefined);
+        setCurrentSessionId(session.id);
+        return session.id;
+      } catch (error) {
+        console.error('🏠 HOME PAGE: Error creating session for document upload:', error);
+        throw error;
+      }
+    }
+    return currentSessionId;
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)]">
       <div className="absolute top-4 right-4 hidden">
@@ -98,29 +114,17 @@ export default function HomePage() {
 
         {/* Search Form */}
         <div className="w-full max-w-2xl mx-auto">
-          <form onSubmit={handleSubmit} className="relative">
-            <div className="relative">
-              <Input
-                type="text"
-                placeholder="How can I help you today?"
-                className="pl-10 pr-16 py-6 text-base rounded-full border border-input/50 bg-background transition-shadow duration-300 focus:shadow-[0_0_25px_rgba(29,99,139,0.15)] focus:outline-none"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                autoFocus
-              />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
-              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
-                <Button 
-                  type="submit" 
-                  size="sm" 
-                  className="h-8 rounded-full"
-                  disabled={!query.trim()}
-                >
-                  <Search className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </form>
+          <ChatInput
+            value={query}
+            onChange={setQuery}
+            onSubmit={handleSubmit}
+            placeholder="How can I help you today?"
+            disabled={isSubmitting}
+            showDocumentUpload={true}
+            sessionId={currentSessionId}
+            onCreateSession={handleDocumentUpload}
+            className="transition-shadow duration-300 focus-within:shadow-[0_0_25px_rgba(29,99,139,0.15)]"
+          />
         </div>
       </div>
 

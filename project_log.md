@@ -1,9 +1,12 @@
 # Project Log
 
-## Snapshot (as of 2025-07-17)
-- Branding polished with a new browser title and favicon.
-- Navigation fixed: `RelatedMaterialsCard` now links to the correct research pages and opens in a new tab to preserve chat context.
-- Ready for next set of UI/UX improvements or feature development.
+## Snapshot (as of 2025-07-18)
+- Document upload functionality integrated into chat inputs across the application.
+- Created unified ChatInput component with document upload capabilities.
+- Session-scoped document upload and search tools are now accessible from both home page and chat interface.
+- Ready for testing and further document management enhancements.
+
+[2025-07-18 04:07] — Integrated document upload functionality into chat inputs. Created unified ChatInput component with drag-and-drop file upload, document management, and session-scoped storage. Both home page and chat interface now support .txt file uploads up to 10MB with real-time feedback and error handling.
 
 [2025-07-17 13:34] — 🚨 CRITICAL SYSTEM FAILURE IDENTIFIED: Entire chat system on ui-updates branch is completely broken. Not just Ask Ellen buttons - ALL chat functionality (homepage, articles, materials, direct chat) shows blank screen until full response is ready. NO real-time streaming whatsoever. This is a system-wide streaming failure that needs immediate attention.
 
@@ -109,6 +112,8 @@
 [2025-07-15 12:30] — Reused the detailed rendering logic from the old dashboard for the new dynamic material pages, ensuring feature parity. Deleted the now-redundant /app/(app)/materials directory to maintain a clean codebase.
 
 [2025-07-15 12:15] — Implemented new Research section under /home/research. Created an index page to display all materials and a dynamic route /home/research/[material] for individual reports.
+
+[2025-07-17 21:04] — 📋 PLANNING: Created comprehensive document upload implementation plan (DOCUMENT_UPLOAD_PLAN.md). Designed hybrid approach: UI-based upload + search tool integration. Ready for phased implementation.
 
 [2025-07-17 16:35] — ✨ UI: Set the application's favicon to the Ellen logo SVG for consistent branding.
 

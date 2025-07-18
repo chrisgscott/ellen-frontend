@@ -3,9 +3,8 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
-import { Search, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { ChevronRight } from 'lucide-react';
+import { ChatInput } from '@/components/chat-input';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
@@ -318,30 +317,14 @@ function ChatPageContent() {
           
           {/* Floating Input Form */}
           <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 w-full max-w-4xl px-6 z-20">
-            <form onSubmit={handleSubmit} className="relative">
-              <div className="relative">
-                <Input
-                  id="chat-input"
-                  type="text"
-                  placeholder="Ask a follow-up..."
-                  className="pl-10 pr-16 py-6 text-base rounded-full border border-input bg-background shadow-xl"
-                  value={newQuery}
-                  onChange={(e) => setNewQuery(e.target.value)}
-                  disabled={isLoading}
-                />
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
-                  <Button 
-                    type="submit" 
-                    size="sm" 
-                    className="h-8 rounded-full"
-                    disabled={!newQuery.trim() || isLoading}
-                  >
-                    <Search className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </form>
+            <ChatInput
+              value={newQuery}
+              onChange={setNewQuery}
+              onSubmit={handleSubmit}
+              placeholder="Ask a follow-up..."
+              disabled={isLoading}
+              sessionId={sessionId || undefined}
+            />
           </div>
         </>
       ) : (
@@ -353,30 +336,14 @@ function ChatPageContent() {
           
           {/* Floating Input Form */}
           <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 w-full max-w-4xl px-6 z-20">
-            <form onSubmit={handleSubmit} className="relative">
-              <div className="relative">
-                <Input
-                  id="chat-input"
-                  type="text"
-                  placeholder="Ask anything or @mention a Space"
-                  className="pl-10 pr-16 py-6 text-base rounded-full border border-input bg-background shadow-xl"
-                  value={newQuery}
-                  onChange={(e) => setNewQuery(e.target.value)}
-                  disabled={isLoading}
-                />
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
-                  <Button 
-                    type="submit" 
-                    size="sm" 
-                    className="h-8 rounded-full"
-                    disabled={!newQuery.trim() || isLoading}
-                  >
-                    <Search className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </form>
+            <ChatInput
+              value={newQuery}
+              onChange={setNewQuery}
+              onSubmit={handleSubmit}
+              placeholder="Ask anything or @mention a Space"
+              disabled={isLoading}
+              sessionId={sessionId || undefined}
+            />
           </div>
         </>
       )}

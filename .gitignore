@@ -13,7 +13,6 @@
 # testing
 /coverage
 /logs
-/docs
 
 # next.js
 /.next/

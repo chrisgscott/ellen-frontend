@@ -3,6 +3,7 @@ import materialExtractorTool from './materialExtractor';
 import opportunitiesTool from './opportunities';
 import monitorGeopoliticalRisksTool from './monitor-geopolitical-risks';
 import portfolioSummaryTool from './portfolio';
+import searchUploadedDocumentsTool from './search-uploaded-documents';
 
 // Tool registry - add new tools here
 export const toolRegistry: ToolRegistry = {
@@ -10,6 +11,7 @@ export const toolRegistry: ToolRegistry = {
   [opportunitiesTool.name]: opportunitiesTool,
   [monitorGeopoliticalRisksTool.name]: monitorGeopoliticalRisksTool,
   [portfolioSummaryTool.name]: portfolioSummaryTool,
+  [searchUploadedDocumentsTool.name]: searchUploadedDocumentsTool,
 };
 
 // Helper functions for the chat API
