@@ -8,7 +8,15 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File;
     const sessionId = formData.get('sessionId') as string;
     
+    console.log('📄 UPLOAD DOCUMENT API: Received upload request', {
+      filename: file?.name,
+      fileSize: file?.size,
+      sessionId,
+      timestamp: new Date().toISOString()
+    });
+    
     if (!file || !sessionId) {
+      console.error('📄 UPLOAD DOCUMENT API: Missing required parameters', { file: !!file, sessionId });
       return NextResponse.json({ error: 'Missing file or session ID' }, { status: 400 });
     }
     
@@ -33,16 +41,34 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const processor = new DocumentProcessor();
     
+    // Get all session headers for debugging
+    const sessionIdFromHeader = request.headers.get('X-Session-ID');
+    
+    console.log('📄 UPLOAD DOCUMENT API: Session ID details:', {
+      formDataSessionId: sessionId,
+      headerSessionId: sessionIdFromHeader,
+      timestamp: new Date().toISOString()
+    });
+    
     // Verify the session exists and belongs to the current user
+    console.log('📄 UPLOAD DOCUMENT API: Verifying session exists:', sessionId);
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
-      .select('id')
+      .select('id, created_at')
       .eq('id', sessionId)
       .single();
     
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Invalid session' }, { status: 400 });
+    if (sessionError) {
+      console.error('📄 UPLOAD DOCUMENT API: Session verification error:', sessionError);
+      return NextResponse.json({ error: `Invalid session: ${sessionError.message}` }, { status: 400 });
     }
+    
+    if (!session) {
+      console.error('📄 UPLOAD DOCUMENT API: Session not found:', sessionId);
+      return NextResponse.json({ error: 'Session not found' }, { status: 400 });
+    }
+    
+    console.log('📄 UPLOAD DOCUMENT API: Session verified successfully:', sessionId);
     
     // 1. Store file in Supabase Storage
     const fileName = `${sessionId}/${Date.now()}-${file.name}`;

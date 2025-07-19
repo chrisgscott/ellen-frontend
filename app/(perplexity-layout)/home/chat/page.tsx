@@ -28,6 +28,10 @@ function ChatPageContent() {
   const threadRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const initialQuerySentRef = useRef(false); // Add this ref to track submission
   
+  // Document staging state
+  const [stagedDocuments, setStagedDocuments] = useState<Array<{name: string; size: number; uploadedAt: Date}>>([]);
+  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
+  
   const {
     session,
     isLoading,
@@ -72,6 +76,19 @@ function ChatPageContent() {
   
   // Get initial query from session metadata
   const initialQuery = session?.metadata?.initial_query as string | undefined;
+  
+  // Handle document staging
+  const handleDocumentStaged = useCallback((file: File) => {
+    console.log('📄 CHAT PAGE: Document staged:', file.name);
+    setStagedFiles(prev => [...prev, file]);
+    setStagedDocuments(prev => [...prev, {
+      name: file.name,
+      size: file.size,
+      uploadedAt: new Date()
+    }]);
+  }, []);
+  
+  // Note: stagedDocuments is passed directly to ChatInput
   
   // Handle initial query from session metadata
   const handleInitialQuery = useCallback(async () => {
@@ -146,8 +163,147 @@ function ChatPageContent() {
       return;
     }
     
-    console.log('💬 CHAT PAGE: Sending new message:', newQuery);
-    await sendMessage(newQuery);
+    // If we have staged documents and no session yet, we need to upload them first
+    if (stagedFiles.length > 0 && !sessionId) {
+      console.log('📄 CHAT PAGE: Uploading staged documents before sending message:', stagedFiles.length);
+      
+      try {
+        // Send the message first to create the session
+        console.log('💬 CHAT PAGE: Sending message to create session:', newQuery);
+        await sendMessage(newQuery);
+        
+        // Poll for session creation with exponential backoff
+        const pollForSession = async (attempts = 0, maxAttempts = 10): Promise<string | null> => {
+          // Fetch the session from the server to ensure we have the latest data
+          try {
+            const response = await fetch('/api/sessions');
+            const data = await response.json();
+            
+            // Find the most recent session
+            if (data.sessions && data.sessions.length > 0) {
+              // Sort sessions by created_at to get the most recent one
+              const sortedSessions = [...data.sessions].sort((a, b) => 
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              );
+              
+              const serverSessionId = sortedSessions[0].id;
+              console.log('📄 CHAT PAGE: Found latest session from server API:', serverSessionId);
+              
+              // Also check URL parameter as backup
+              const currentParams = new URLSearchParams(window.location.search);
+              const urlSessionId = currentParams.get('session');
+              
+              console.log('📄 CHAT PAGE: Checking for session (attempt', attempts + 1, ')', {
+                serverSessionId,
+                urlSessionId,
+                currentSessionId: sessionId,
+                timestamp: new Date().toISOString()
+              });
+              
+              // Return server-side session ID as most authoritative source
+              return serverSessionId;
+            }
+          } catch (error) {
+            console.error('📄 CHAT PAGE: Error fetching sessions from server:', error);
+          }
+          
+          // Fallback to URL parameter
+          const currentParams = new URLSearchParams(window.location.search);
+          const urlSessionId = currentParams.get('session');
+          
+          if (urlSessionId) {
+            console.log('📄 CHAT PAGE: Using session from URL:', urlSessionId);
+            return urlSessionId;
+          }
+          
+          if (attempts >= maxAttempts) {
+            console.error('📄 CHAT PAGE: Failed to find session after', maxAttempts, 'attempts');
+            return null;
+          }
+          
+          // Exponential backoff: 100ms, 200ms, 400ms, 800ms, etc.
+          const delay = Math.min(100 * Math.pow(2, attempts), 2000);
+          console.log('📄 CHAT PAGE: Session not found, retrying in', delay, 'ms (attempt', attempts + 1, ')');
+          
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return pollForSession(attempts + 1, maxAttempts);
+        };
+        
+        const currentSessionId = await pollForSession();
+        
+        if (currentSessionId) {
+          console.log('📄 CHAT PAGE: Session created, now uploading documents to session:', currentSessionId);
+          
+          // Double-verify the session exists in the database before uploading
+          try {
+            const verifyResponse = await fetch('/api/sessions');
+            const verifyData = await verifyResponse.json();
+            const sessionExists = verifyData.sessions?.some((s: {id: string}) => s.id === currentSessionId);
+            
+            if (!sessionExists) {
+              console.error('📄 CHAT PAGE: Session not found in database, cannot upload documents:', currentSessionId);
+              throw new Error('Session not found in database');              
+            }
+            
+            console.log('📄 CHAT PAGE: Session verified in database:', currentSessionId);
+          } catch (error) {
+            console.error('📄 CHAT PAGE: Error verifying session:', error);
+            // Continue with upload anyway, since session might exist but verification failed
+          }
+          
+          // Upload each staged document to the session
+          for (const file of stagedFiles) {
+            try {
+              const formData = new FormData();
+              formData.append('file', file);
+              formData.append('sessionId', currentSessionId);
+              
+              console.log('📄 CHAT PAGE: Uploading document:', {
+                filename: file.name,
+                fileSize: file.size,
+                sessionId: currentSessionId,
+                formDataSessionId: formData.get('sessionId'),
+                timestamp: new Date().toISOString()
+              });
+              
+              const response = await fetch('/api/chat/upload-document', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                  // Add headers to ensure request completes properly
+                  'X-Session-ID': currentSessionId
+                }
+              });
+              
+              if (!response.ok) {
+                const errorData = await response.json();
+                console.error('📄 CHAT PAGE: Failed to upload document:', file.name, errorData);
+              } else {
+                const responseData = await response.json();
+                console.log('📄 CHAT PAGE: Successfully uploaded document:', file.name, responseData);
+              }
+            } catch (error) {
+              console.error('📄 CHAT PAGE: Error uploading document:', file.name, error);
+            }
+          }
+          
+          // Clear staged documents after upload
+          console.log('📄 CHAT PAGE: Clearing staged documents after successful upload');
+          setStagedFiles([]);
+          setStagedDocuments([]);
+        } else {
+          console.error('📄 CHAT PAGE: Could not find session ID after message creation');
+        }
+        
+      } catch (error) {
+        console.error('📄 CHAT PAGE: Error in document upload flow:', error);
+      }
+    } else {
+      // Normal message sending (no staged documents or session already exists)
+      console.log('💬 CHAT PAGE: Sending new message:', newQuery);
+      await sendMessage(newQuery);
+    }
+    
     setNewQuery('');
   };
   
@@ -324,6 +480,8 @@ function ChatPageContent() {
               placeholder="Ask a follow-up..."
               disabled={isLoading}
               sessionId={sessionId || undefined}
+              onDocumentStaged={handleDocumentStaged}
+              stagedDocuments={stagedDocuments}
             />
           </div>
         </>
@@ -343,6 +501,8 @@ function ChatPageContent() {
               placeholder="Ask anything or @mention a Space"
               disabled={isLoading}
               sessionId={sessionId || undefined}
+              onDocumentStaged={handleDocumentStaged}
+              stagedDocuments={stagedDocuments}
             />
           </div>
         </>

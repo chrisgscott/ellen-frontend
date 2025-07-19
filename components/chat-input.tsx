@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Search, Paperclip, X, File } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,9 @@ interface ChatInputProps {
   className?: string;
   showDocumentUpload?: boolean;
   onCreateSession?: () => Promise<string>;
+  // Document staging props
+  onDocumentStaged?: (file: File) => void;
+  stagedDocuments?: Array<{name: string; size: number; uploadedAt: Date}>;
 }
 
 interface UploadedDocument {
@@ -34,77 +37,99 @@ export function ChatInput({
   sessionId,
   className = "",
   showDocumentUpload = true,
-  onCreateSession
+  onCreateSession,
+  onDocumentStaged,
+  stagedDocuments = []
 }: ChatInputProps) {
   const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isFetchingDocuments, setIsFetchingDocuments] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Effect to handle displaying either session documents or staged documents
+  useEffect(() => {
+    if (sessionId) {
+      // When we have a session ID, fetch real documents from the database
+      fetchSessionDocuments(sessionId);
+    } else {
+      // No session - show staged documents from props
+      setUploadedDocuments(stagedDocuments);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]); // Only depend on sessionId to prevent infinite loops
+  
+  // Update documents when stagedDocuments changes (but only if no session)
+  useEffect(() => {
+    if (!sessionId) {
+      setUploadedDocuments(stagedDocuments);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stagedDocuments.length, sessionId]); // Use length to prevent infinite loops
+  
+  // Function to fetch documents associated with a session from the server
+  async function fetchSessionDocuments(sessionId: string) {
+    if (!sessionId) return;
+    
+    try {
+      setIsFetchingDocuments(true);
+      console.log('📄 SESSION_DOCS: Fetching documents for session:', sessionId);
+      const response = await fetch(`/api/chat/session-documents?sessionId=${sessionId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch session documents');
+      }
+      
+      const data = await response.json();
+      console.log('📄 SESSION_DOCS: Found', data.documents.length, 'documents');
+      
+      setUploadedDocuments(data.documents.map((doc: any) => ({
+        name: doc.original_filename,
+        size: doc.file_size || 0,
+        uploadedAt: new Date(doc.uploaded_at)
+      })));
+    } catch (error) {
+      console.error('Error fetching session documents:', error);
+    } finally {
+      setIsFetchingDocuments(false);
+    }
+  }
 
+  // Handle file selection for staging (not immediate upload)
   const handleFileUpload = async (file: File) => {
+    if (!file) return;
+
+    // Validate file type and size
+    if (file.type !== 'text/plain') {
+      setUploadError('Only .txt files are supported.');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      setUploadError('File size exceeds 10MB limit.');
+      return;
+    }
+
     setIsUploading(true);
     setUploadError(null);
-    let currentSessionId = sessionId;
-
-    if (!currentSessionId && onCreateSession) {
-      try {
-        console.log('📄 ChatInput: No session, creating one...');
-        currentSessionId = await onCreateSession();
-        console.log('📄 ChatInput: New session created:', currentSessionId);
-      } catch (error) {
-        console.error('📄 ChatInput: Could not create session', error);
-        setUploadError('Could not create a session. Please try again.');
-        setIsUploading(false);
-        return;
-      }
-    }
-
-    if (!currentSessionId) {
-      setUploadError('No active session. Please start a conversation first.');
-      setIsUploading(false);
-      return;
-    }
-
-    // Validate file type
-    if (!file.type.startsWith('text/')) {
-      setUploadError('Only text files are currently supported (.txt)');
-      return;
-    }
-
-    // Validate file size (10MB limit)
-    if (file.size > 10 * 1024 * 1024) {
-      setUploadError('File size must be less than 10MB');
-      return;
-    }
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('sessionId', currentSessionId);
-
-      const response = await fetch('/api/chat/upload-document', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
-      }
-
-      // Add to uploaded documents list
-      setUploadedDocuments(prev => [...prev, {
+      // Instead of uploading immediately, we stage the document
+      const newDocument = {
         name: file.name,
         size: file.size,
         uploadedAt: new Date()
-      }]);
-
-      // Clear any previous errors
-      setUploadError(null);
-
+      };
+      
+      setUploadedDocuments(prev => [...prev, newDocument]);
+      
+      // Notify parent about staged document
+      if (onDocumentStaged) {
+        onDocumentStaged(file);
+      }
     } catch (error) {
-      console.error('Upload error:', error);
-      setUploadError(error instanceof Error ? error.message : 'Upload failed');
+      console.error('Error staging file:', error);
+      setUploadError('Failed to stage document. Please try again.');
     } finally {
       setIsUploading(false);
     }
@@ -122,6 +147,8 @@ export function ChatInput({
   };
 
   const removeDocument = (index: number) => {
+    // In the new design, we only allow removing staged documents
+    // Once documents are associated with a session, they can't be removed from the UI
     setUploadedDocuments(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -148,7 +175,7 @@ export function ChatInput({
           />
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
           <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
-            {showDocumentUpload && (sessionId || onCreateSession) && (
+            {showDocumentUpload && (
               <>
                 <input
                   ref={fileInputRef}
@@ -204,6 +231,7 @@ export function ChatInput({
                   size="sm"
                   className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
                   onClick={() => removeDocument(index)}
+                  disabled={!!sessionId} // Only allow removal for staged documents (no session yet)
                 >
                   <X className="h-3 w-3" />
                 </Button>
@@ -211,12 +239,19 @@ export function ChatInput({
             ))}
           </div>
         )}
+        
+        {/* Loading indicator for documents */}
+        {isFetchingDocuments && (
+          <p className="text-xs text-muted-foreground mt-2 text-center">
+            Loading documents...
+          </p>
+        )}
       </form>
 
       {/* Upload Status */}
       {isUploading && (
         <p className="text-xs text-muted-foreground mt-2 text-center">
-          Uploading and processing document...
+          Processing document...
         </p>
       )}
     </div>

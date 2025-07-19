@@ -56,7 +56,7 @@ const searchUploadedDocumentsTool: EllenTool = {
         content: `🔍 Searching uploaded documents for: "${query}"`
       });
       
-      // Query session_documents table for this session
+      // First look for documents in the current session
       let queryBuilder = supabase
         .from('session_documents')
         .select('*')
@@ -66,31 +66,72 @@ const searchUploadedDocumentsTool: EllenTool = {
         queryBuilder = queryBuilder.ilike('original_filename', `%${document_name}%`);
       }
       
-      const { data: documents, error } = await queryBuilder;
+      const { data: sessionDocuments, error: sessionError } = await queryBuilder;
       
-      if (error) {
-        console.error('🔧 DOCUMENT_SEARCH: Database error:', error);
-        throw error;
+      if (sessionError) {
+        console.error('🔧 DOCUMENT_SEARCH: Database error searching session:', sessionError);
+        throw sessionError;
       }
       
-      if (!documents || documents.length === 0) {
-        console.log('🔧 DOCUMENT_SEARCH: No documents found for session:', session_id);
-        return {
-          success: true,
-          data: {
-            message: 'No documents found in this session. Please upload a document first.',
-            results: []
+      // If no documents in this session, try to find recent documents by filename (RFI)
+      // Determine which documents to use - either from current session or fallback to recent uploads
+      let documentsToUse;
+      
+      if (!sessionDocuments || sessionDocuments.length === 0) {
+        console.log('🔧 DOCUMENT_SEARCH: No documents in current session, searching recent uploads...');
+        
+        // Look for any document with a filename matching common RFI patterns
+        let fallbackQuery = supabase
+          .from('session_documents')
+          .select('*');
+          
+        if (document_name) {
+          // If user specified a document name, use that
+          fallbackQuery = fallbackQuery.ilike('original_filename', `%${document_name}%`);
+        } else {
+          // Otherwise, look for common document patterns in the query or filename
+          const isRfiQuery = query.toLowerCase().includes('rfi');
+          
+          if (isRfiQuery) {
+            fallbackQuery = fallbackQuery.ilike('original_filename', '%rfi%');
           }
-        };
+        }
+        
+        // Order by most recently uploaded
+        fallbackQuery = fallbackQuery.order('uploaded_at', { ascending: false }).limit(5);
+        
+        const { data: recentDocuments, error: recentError } = await fallbackQuery;
+        
+        if (recentError) {
+          console.error('🔧 DOCUMENT_SEARCH: Error searching for recent documents:', recentError);
+          throw recentError;
+        }
+        
+        if (!recentDocuments || recentDocuments.length === 0) {
+          console.log('🔧 DOCUMENT_SEARCH: No documents found in any session');
+          return {
+            success: true,
+            data: {
+              message: 'No documents found. Please upload a document first.',
+              results: []
+            }
+          };
+        }
+        
+        console.log('🔧 DOCUMENT_SEARCH: Found recent documents from other sessions:', recentDocuments.length);
+        documentsToUse = recentDocuments;
+      } else {
+        // Use documents from the current session if found
+        documentsToUse = sessionDocuments;
       }
       
-      console.log('🔧 DOCUMENT_SEARCH: Found', documents.length, 'documents');
+      console.log('🔧 DOCUMENT_SEARCH: Found', documentsToUse.length, 'documents');
       
       // Search through content chunks
       const searchResults: SearchResult[] = [];
       const searchQuery = query.toLowerCase();
       
-      for (const doc of documents) {
+      for (const doc of documentsToUse) {
         const chunks = doc.content_chunks as DocumentChunk[];
         
         for (const chunk of chunks) {
@@ -121,14 +162,14 @@ const searchUploadedDocumentsTool: EllenTool = {
       
       streamData({
         type: 'tool_result',
-        content: `Found ${topResults.length} relevant sections in ${documents.length} uploaded document(s)`
+        content: `Found ${topResults.length} relevant sections in ${documentsToUse.length} uploaded document(s)`
       });
       
       return {
         success: true,
         data: {
           query,
-          total_documents: documents.length,
+          total_documents: documentsToUse.length,
           total_results: searchResults.length,
           top_results: topResults
         },

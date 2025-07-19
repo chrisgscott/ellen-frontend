@@ -9,8 +9,8 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookieOptions: {
-        // IMPORTANT: Make sure to switch to your production domain in production
-        domain: process.env.NODE_ENV === 'production' ? '.your-domain.com' : 'localhost',
+        // Using .meetellen.co for production and localhost for development
+        domain: process.env.NODE_ENV === 'production' ? '.meetellen.co' : 'localhost',
         path: '/',
       },
       cookies: {

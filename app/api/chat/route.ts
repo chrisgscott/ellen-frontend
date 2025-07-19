@@ -425,6 +425,33 @@ export async function POST(req: NextRequest): Promise<Response> {
       id: sessionData.id,
       title: sessionData.title
     });
+    
+    // Check if session has uploaded documents
+    console.log('🚀 API ROUTE: Checking for uploaded session documents');
+    const { data: sessionDocuments, error: documentsError } = await supabase
+      .from('session_documents')
+      .select('id, original_filename, content_chunks')
+      .eq('session_id', session_id);
+      
+    if (documentsError) {
+      console.error('🚀 API ROUTE: Error checking for session documents:', documentsError.message);
+    }
+    
+    // Track if session has uploaded documents
+    const hasUploadedDocuments = sessionDocuments && sessionDocuments.length > 0;
+    console.log('🚀 API ROUTE: Session has uploaded documents:', hasUploadedDocuments);
+    if (hasUploadedDocuments) {
+      console.log('🚀 API ROUTE: Found', sessionDocuments.length, 'document(s):', 
+        sessionDocuments.map(doc => doc.original_filename).join(', '));
+      
+      // Check if documents have content chunks (which are needed for search)
+      const docsWithChunks = sessionDocuments.filter(doc => 
+        doc.content_chunks && Array.isArray(doc.content_chunks) && doc.content_chunks.length > 0
+      ).length;
+      
+      console.log('🧪 DEBUG: Documents with content chunks:', docsWithChunks, 
+        'out of', sessionDocuments.length, 'total documents');
+    }
 
     // Create user message
     console.log('🚀 API ROUTE: Creating user message in database');
@@ -471,8 +498,12 @@ export async function POST(req: NextRequest): Promise<Response> {
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          // Track tools called during this request
-          const toolsCalled: Array<{ name: string, success: boolean, timestamp: string }> = [];
+          // Track tools called during this request with more detailed logging
+          const toolsCalled: Array<{ name: string, success: boolean, timestamp: string, args?: Record<string, unknown> }> = [];
+          
+          // Enhanced logging for document tracking
+          console.log('🧪 DEBUG: Starting chat processing for session:', session_id);
+          console.log('🧪 DEBUG: Has uploaded documents (from earlier check):', hasUploadedDocuments);
           
           // Get chat history for context
           const { data: historyData, error: historyError } = await supabase
@@ -650,6 +681,15 @@ export async function POST(req: NextRequest): Promise<Response> {
                 CRITICAL: Answer the user's specific question directly. Do not provide generic information or go off-topic. Do not hallucinate data that does not exist in the materials database or web search results.
                 
                 IMPORTANT: If web search results are not relevant to the user's question, IGNORE them completely and focus on the provided context and your knowledge.
+                ${hasUploadedDocuments 
+                  ? `
+DOCUMENT PRIORITY INSTRUCTIONS:
+                - When the user is asking about content in their uploaded documents, ALWAYS use the search_uploaded_documents tool first
+                - Use this tool before searching other sources when the query relates to user-uploaded files
+                - Only fall back to other sources if the search_uploaded_documents tool doesn't find relevant information
+                - If the search_uploaded_documents tool returns results, prioritize this information in your response
+                - When referring to content from uploaded documents, clearly indicate the source document name` 
+                  : ''}
                 
                 INSTRUCTIONS:
                 - FIRST: Read the user's question carefully and focus your entire response on answering that specific question
@@ -664,12 +704,23 @@ export async function POST(req: NextRequest): Promise<Response> {
                 - DO NOT discuss topics that are unrelated to the user's question, even if they appear in web search results
                 
                 CONTEXT SOURCES:
-                - [DOC-X]: Research documents, reports, and technical literature
+                ${hasUploadedDocuments 
+                  ? '- [UPLOAD]: User-uploaded documents from the current session (highest priority)\n                ' 
+                  : ''}- [DOC-X]: Research documents, reports, and technical literature
                 - [VEC-X]: Materials vector database entries with properties and applications
                 - [DB-X]: Structured materials database with specifications and summaries
                 - [WEB]: Current web search results with real-time information`
                 : `You are an critical materials AI analyst with access to a comprehensive critical and strategic materials database.
                 
+                ${hasUploadedDocuments 
+                  ? `DOCUMENT PRIORITY INSTRUCTIONS:
+                - When the user is asking about content in their uploaded documents, ALWAYS use the search_uploaded_documents tool first
+                - Use this tool before searching other sources when the query relates to user-uploaded files
+                - Only fall back to other sources if the search_uploaded_documents tool doesn't find relevant information
+                - If the search_uploaded_documents tool returns results, prioritize this information in your response
+                - When referring to content from uploaded documents, clearly indicate the source document name
+` 
+                  : ''}
                 INSTRUCTIONS:
                 - Use the provided context from documents and materials database to answer questions accurately
                 - When referencing materials, cite specific properties, applications, and characteristics from the context
@@ -678,7 +729,9 @@ export async function POST(req: NextRequest): Promise<Response> {
                 - If asked about materials not in the context, clearly state the limitation
                 
                 CONTEXT SOURCES:
-                - [DOC-X]: Research documents, reports, and technical literature
+                ${hasUploadedDocuments 
+                  ? '- [UPLOAD]: User-uploaded documents from the current session (highest priority)\n                ' 
+                  : ''}- [DOC-X]: Research documents, reports, and technical literature
                 - [VEC-X]: Materials vector database entries with properties and applications
                 - [DB-X]: Structured materials database with specifications and summaries`,
             },
@@ -921,6 +974,17 @@ ${contextPrompt}`
           
           // Get the structured completion result (which should be ready by now or soon)
           console.log('🚀 API ROUTE: Waiting for structured completion');
+          
+          // Log available tools for debugging
+          const availableTools = getAllToolSchemas();
+          console.log('🔧 TOOLS: Available tools for this request:', 
+            availableTools.map(tool => tool.function.name));
+          
+          // Check if search_uploaded_documents tool is available
+          const hasDocSearchTool = availableTools.some(tool => 
+            tool.function.name === 'search_uploaded_documents');
+          console.log('🔧 TOOLS: search_uploaded_documents available:', hasDocSearchTool);
+          
           const structuredCompletion = await structuredCompletionPromise;
 
           // Process the structured completion to extract data
@@ -933,7 +997,14 @@ ${contextPrompt}`
             const toolName = toolCall.function.name;
             functionCallBuffer = toolCall.function.arguments || '';
             
-            console.log('🔧 TOOL CALL: Executing tool:', toolName, 'with args:', functionCallBuffer ? JSON.parse(functionCallBuffer) : {});
+            const parsedArgs = functionCallBuffer ? JSON.parse(functionCallBuffer) : {};
+            console.log('🔧 TOOL CALL: Executing tool:', toolName, 'with args:', parsedArgs);
+            
+            // Special logging for document search tool
+            if (toolName === 'search_uploaded_documents') {
+              console.log('🔎 DOCUMENT SEARCH: Tool was selected by OpenAI, executing with args:', parsedArgs);
+            }
+            
             const toolStartTime = new Date().toISOString();
             
             // Handle tools using the registry system
@@ -954,7 +1025,16 @@ ${contextPrompt}`
                 
                 if (result.success) {
                   console.log('✅ TOOL SUCCESS:', toolName, 'completed successfully');
-                  toolsCalled.push({ name: toolName, success: true, timestamp: toolStartTime });
+                  toolsCalled.push({ name: toolName, success: true, timestamp: toolStartTime, args: parsedArgs });
+                  
+                  // Special logging for document search results
+                  if (toolName === 'search_uploaded_documents' && result.data) {
+                    console.log('🔎 DOCUMENT SEARCH RESULTS:', {
+                      success: true,
+                      resultsCount: Array.isArray(result.data) ? result.data.length : 'unknown',
+                      data: result.data
+                    });
+                  }
                   
                   // Stream data to client if requested
                   if (result.streamToClient && result.clientPayload) {
