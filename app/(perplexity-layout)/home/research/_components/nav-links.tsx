@@ -16,6 +16,14 @@ interface NavLinksProps {
 export function NavLinks({ materials }: NavLinksProps) {
   const pathname = usePathname();
 
+  const toTitleCase = (str: string) => {
+    if (!str) return '';
+    return str.replace(
+      /\w\S*/g,
+      (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+    );
+  };
+
   return (
     <ul className="space-y-1 p-4 pt-0">
       {materials.map((material) => {
@@ -32,7 +40,7 @@ export function NavLinks({ materials }: NavLinksProps) {
                   : 'hover:bg-accent hover:text-accent-foreground'
               )}
             >
-              {material.material}
+                            {toTitleCase(material.material)}
             </Link>
           </li>
         );
