@@ -49,6 +49,42 @@ const DataPoint = ({ label, value, unit = '' }: { label: string; value: string |
   <p><span className="font-semibold">{label}:</span> {value ?? 'N/A'}{unit}</p>
 );
 
+const MarkdownText = ({ label, content }: { label: string; content: string | null }) => {
+  if (!content || content.trim() === '') {
+    return <p><span className="font-semibold">{label}:</span> N/A</p>;
+  }
+
+  // Extract content from JSON if needed
+  let processedContent = content;
+  try {
+    const parsed = JSON.parse(content);
+    if (parsed && typeof parsed === 'object' && parsed.value) {
+      processedContent = parsed.value;
+    }
+  } catch {
+    // Not JSON, use content as-is
+  }
+
+  return (
+    <div className="mb-4">
+      <p className="font-semibold mb-2">{label}:</p>
+      <div className="prose prose-sm dark:prose-invert max-w-none">
+        <ReactMarkdown 
+          remarkPlugins={[remarkGfm]} 
+          components={{ 
+            p: ({ ...props}) => <p className="mb-2" {...props} />,
+            strong: ({ ...props}) => <strong className="font-semibold text-foreground" {...props} />,
+            ul: ({ ...props}) => <ul className="list-disc list-inside space-y-1" {...props} />,
+            li: ({ ...props}) => <li {...props} />
+          }}
+        >
+          {processedContent}
+        </ReactMarkdown>
+      </div>
+    </div>
+  );
+};
+
 const Score = ({ label, value, max = 5 }: { label: string; value: number; max?: number }) => {
   const percentage = value ? (value / max) * 100 : 0;
   let variant: "success" | "warning" | "danger" | "default" = "success";
@@ -72,14 +108,29 @@ const Score = ({ label, value, max = 5 }: { label: string; value: number; max?: 
 };
 
 const JsonValue = ({ jsonString }: { jsonString: string | null }) => {
-  if (jsonString === null || jsonString === undefined) {
+  if (!jsonString || jsonString.trim() === '') {
     return <p>N/A</p>;
   }
+  
   try {
     const parsed = JSON.parse(jsonString);
-    return <p>{parsed.value ?? 'N/A'}</p>;
+    
+    // Handle different JSON structures
+    if (parsed && typeof parsed === 'object') {
+      if (parsed.value !== undefined) {
+        return <p>{String(parsed.value)}</p>;
+      } else if (Array.isArray(parsed)) {
+        return <p>{parsed.join(', ')}</p>;
+      } else {
+        // Display the first meaningful value from the object
+        const values = Object.values(parsed).filter(v => v !== null && v !== undefined);
+        return <p>{values.length > 0 ? String(values[0]) : 'N/A'}</p>;
+      }
+    }
+    
+    return <p>{String(parsed)}</p>;
   } catch {
-    // It might not be a JSON object, but a simple string.
+    // Not JSON, display as plain text
     return <p>{jsonString}</p>;
   }
 };
@@ -87,25 +138,64 @@ const JsonValue = ({ jsonString }: { jsonString: string | null }) => {
 const StringArrayDisplay = ({ content, displayAs = 'badges' }: { content: string | string[] | null, displayAs?: 'badges' | 'text' }) => {
     let items: string[] = [];
 
-    if (typeof content === 'string') {
-        try {
-            const parsed = JSON.parse(content);
-            if (parsed && typeof parsed.value === 'string') {
-                // Handles cases like '{"value": "item1, item2"}'
-                items = parsed.value.split(',').map((item: string) => item.trim());
-            } else if (Array.isArray(parsed.value)) {
-                // Handles cases like '{"value": ["item1", "item2"]}'
-                items = parsed.value.map(String);
-            }
-        } catch {
-            // Not a JSON string, treat as a simple string
-            items = [content as string];
-        }
-    } else if (Array.isArray(content)) {
-        items = content.map(item => String(item).replace(/^\d+\.\s*/, '').trim());
+    if (!content) {
+        return <p>N/A</p>;
     }
 
-    if (items.length === 0 || !items[0]) {
+    if (typeof content === 'string') {
+        try {
+            // Try to parse as JSON first
+            const parsed = JSON.parse(content);
+            if (Array.isArray(parsed)) {
+                // Direct array: ["item1", "item2"]
+                items = parsed.map(String).filter(Boolean);
+            } else if (parsed && typeof parsed.value === 'string') {
+                // Nested value: {"value": "item1, item2"}
+                items = parsed.value.split(',').map((item: string) => item.trim()).filter(Boolean);
+            } else if (Array.isArray(parsed.value)) {
+                // Nested array: {"value": ["item1", "item2"]}
+                items = parsed.value.map(String).filter(Boolean);
+            } else {
+                // Single value object: {"value": "single item"}
+                items = [String(parsed.value || parsed)].filter(Boolean);
+            }
+        } catch {
+            // Not JSON, check if it's a comma-separated string
+            if (content.includes(',')) {
+                items = content.split(',').map((item: string) => item.trim()).filter(Boolean);
+            } else {
+                items = [content].filter(Boolean);
+            }
+        }
+    } else if (Array.isArray(content)) {
+        // Handle arrays that might contain JSON strings or malformed data
+        items = content.flatMap(item => {
+            if (typeof item === 'string') {
+                try {
+                    // Try to parse each array item as JSON
+                    const parsed = JSON.parse(item);
+                    return Array.isArray(parsed) ? parsed : [parsed];
+                } catch {
+                    // Clean up malformed JSON fragments, numbered lists, and quotes
+                    const cleaned = item
+                        .replace(/^\d+\.\s*/, '') // Remove numbered lists
+                        .replace(/^["{]+|[}"]+$/g, '') // Remove leading/trailing braces and quotes
+                        .replace(/^"|"$/g, '') // Remove remaining quotes
+                        .trim();
+                    
+                    // If it contains commas, split it (handles cases like "Shanghai (China), Rotterdam (Netherlands)")
+                    if (cleaned.includes(',') && !cleaned.includes('(')) {
+                        return cleaned.split(',').map(s => s.trim()).filter(Boolean);
+                    }
+                    
+                    return cleaned;
+                }
+            }
+            return String(item);
+        }).filter(Boolean);
+    }
+
+    if (items.length === 0) {
         return <p>N/A</p>;
     }
 
@@ -122,11 +212,7 @@ const StringArrayDisplay = ({ content, displayAs = 'badges' }: { content: string
     );
 };
 
-const BulletPoints = ({ content }: { content: string }) => (
-  <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ ul: ({ ...props}) => <ul className="list-disc list-inside space-y-1" {...props} /> }}>
-      {content || 'N/A'}
-  </ReactMarkdown>
-);
+
 
 const reportSections = [
   { id: 'market-overview', title: 'Market Overview', icon: Building },
@@ -193,8 +279,8 @@ export default async function MaterialPage({ params }: PageProps) {
                     <SubSection title="Market Fundamentals">
                         <DataPoint label="Market Size" value={`$${materialData.market_size_usd_billions}B globally`} />
                         <DataPoint label="Annual Growth" value={materialData.annual_growth_rate_pct ? `${(materialData.annual_growth_rate_pct * 100).toFixed(2)}%` : "N/A"} />
-                        <DataPoint label="Market Stage" value={materialData.market_maturity_stage} />
-                        <DataPoint label="Key Industries" value={materialData.industries} />
+                        <MarkdownText label="Market Stage" content={materialData.market_maturity_stage} />
+                        <MarkdownText label="Key Industries" content={materialData.industries} />
                     </SubSection>
                     <SubSection title="Current Pricing">
                         <DataPoint label="Market Price" value={`$${materialData.current_market_value_kg}/kg`} />
@@ -248,12 +334,8 @@ export default async function MaterialPage({ params }: PageProps) {
 
                 
                 <Section id={reportSections[3].id} title={reportSections[3].title} icon={reportSections[3].icon}>
-                    <SubSection title="National Security Implications">
-                        <BulletPoints content={materialData.national_security_implications} />
-                    </SubSection>
-                    <SubSection title="Dual-Use Potential">
-                        <BulletPoints content={materialData.dual_use_potential} />
-                    </SubSection>
+                    <MarkdownText label="National Security Implications" content={materialData.national_security_implications} />
+                    <MarkdownText label="Dual-Use Potential" content={materialData.dual_use_potential} />
                     <SubSection title="Risk Scores">
                         <Score label="Foreign Influence Score" value={materialData.foreign_influence_score} />
                         <Score label="Supply Chain Weaponization Risk" value={materialData.supply_chain_weaponization_risk} />
@@ -263,21 +345,11 @@ export default async function MaterialPage({ params }: PageProps) {
                 </Section>
 
                 <Section id={reportSections[4].id} title={reportSections[4].title} icon={reportSections[4].icon}>
-                    <SubSection title="Source Locations">
-                        <BulletPoints content={materialData.source_locations} />
-                    </SubSection>
-                    <SubSection title="Supply Chain">
-                        <BulletPoints content={materialData.supply} />
-                    </SubSection>
-                    <SubSection title="Ownership">
-                        <BulletPoints content={materialData.ownership} />
-                    </SubSection>
-                    <SubSection title="Processing">
-                        <BulletPoints content={materialData.processing} />
-                    </SubSection>
-                    <SubSection title="Chokepoints">
-                        <BulletPoints content={materialData.chokepoints} />
-                    </SubSection>
+                    <MarkdownText label="Source Locations" content={materialData.source_locations} />
+                    <MarkdownText label="Supply Chain" content={materialData.supply} />
+                    <MarkdownText label="Ownership" content={materialData.ownership} />
+                    <MarkdownText label="Processing" content={materialData.processing} />
+                    <MarkdownText label="Chokepoints" content={materialData.chokepoints} />
                     <SubSection title="Vulnerability Scores">
                         <Score label="Supply Chain Vulnerability Score" value={materialData.supply_chain_vulnerability_score} />
                         <Score label="Logistics Complexity Score" value={materialData.logistics_complexity_score} />
@@ -286,18 +358,10 @@ export default async function MaterialPage({ params }: PageProps) {
                 </Section>
 
                 <Section id={reportSections[5].id} title={reportSections[5].title} icon={reportSections[5].icon}>
-                    <SubSection title="Investment Thesis">
-                        <BulletPoints content={materialData.investment_thesis} />
-                    </SubSection>
-                    <SubSection title="Opportunities">
-                        <BulletPoints content={materialData.opportunities} />
-                    </SubSection>
-                    <SubSection title="Risks">
-                        <BulletPoints content={materialData.risks} />
-                    </SubSection>
-                    <SubSection title="Mitigation Recommendations">
-                        <BulletPoints content={materialData.mitigation_recommendations} />
-                    </SubSection>
+                    <MarkdownText label="Investment Thesis" content={materialData.investment_thesis} />
+                    <MarkdownText label="Opportunities" content={materialData.opportunities} />
+                    <MarkdownText label="Risks" content={materialData.risks} />
+                    <MarkdownText label="Mitigation Recommendations" content={materialData.mitigation_recommendations} />
                     <SubSection title="Strategic Scores">
                         <Score label="Strategic Importance Score" value={materialData.strategic_importance_score} />
                         <Score label="Market Timing Score" value={materialData.market_timing_score} />
@@ -305,15 +369,9 @@ export default async function MaterialPage({ params }: PageProps) {
                 </Section>
 
                 <Section id={reportSections[6].id} title={reportSections[6].title} icon={reportSections[6].icon}>
-                    <SubSection title="Industries">
-                        <BulletPoints content={materialData.industries} />
-                    </SubSection>
-                    <SubSection title="Key Buyers">
-                        <BulletPoints content={materialData.buyers} />
-                    </SubSection>
-                    <SubSection title="Dealers">
-                        <BulletPoints content={materialData.dealers} />
-                    </SubSection>
+                    <MarkdownText label="Industries" content={materialData.industries} />
+                    <MarkdownText label="Key Buyers" content={materialData.buyers} />
+                    <MarkdownText label="Dealers" content={materialData.dealers} />
                     <SubSection title="End Customers & Sectors">
                         <StringArrayDisplay content={materialData.key_end_customers} />
                         <StringArrayDisplay content={materialData.end_market_sectors} />
@@ -321,9 +379,7 @@ export default async function MaterialPage({ params }: PageProps) {
                 </Section>
 
                 <Section id={reportSections[7].id} title={reportSections[7].title} icon={reportSections[7].icon}>
-                    <SubSection title="Data Sources">
-                        <JsonValue jsonString={materialData.data_sources} />
-                    </SubSection>
+                    <MarkdownText label="Data Sources" content={materialData.data_sources} />
                     <SubSection title="Last Updated">
                         <JsonValue jsonString={materialData.data_last_updated} />
                     </SubSection>
