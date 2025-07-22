@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { ShieldAlert, Users, BarChart2 } from 'lucide-react';
+import { ShieldAlert, Users, BarChart2, FileText } from 'lucide-react';
 
 export default function AdminPage() {
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -50,7 +50,7 @@ export default function AdminPage() {
         <p className="text-muted-foreground">Welcome, Admin. Here you can manage the application.</p>
       </div>
       
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">User Management</CardTitle>
@@ -78,6 +78,16 @@ export default function AdminPage() {
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground">Review and manage user-generated content.</p>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => window.location.href = '/admin/documents'}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Document Management</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground">Upload and manage documents for the knowledge base.</p>
           </CardContent>
         </Card>
       </div>
