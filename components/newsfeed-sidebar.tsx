@@ -16,6 +16,13 @@ import {
   ExternalLink,
   EyeOff 
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
 
@@ -145,12 +152,47 @@ const NewsItemCard = ({ item, onItemClick, onHide, isHiding }: NewsItemCardProps
   </Card>
 );
 
-// Custom hook for fetching news data (compatible with Next.js)
-const useNewsData = (apiEndpoint: string) => {
-  return useQuery<NewsItem[]>({
-    queryKey: ['news', apiEndpoint],
+// Types for filter options
+interface FilterOption {
+  value: string;
+  label: string;
+}
+
+interface FilterOptions {
+  regions: FilterOption[];
+  sources: FilterOption[];
+  clusters: FilterOption[];
+}
+
+// Custom hook for fetching filter options
+const useFilterOptions = () => {
+  return useQuery<FilterOptions>({
+    queryKey: ['news-filters'],
     queryFn: async () => {
-      const response = await fetch(apiEndpoint);
+      const response = await fetch('/api/news/filters');
+      if (!response.ok) {
+        throw new Error('Failed to fetch filter options');
+      }
+      return response.json();
+    },
+    staleTime: 30 * 60 * 1000, // 30 minutes - filter options don't change often
+  });
+};
+
+// Custom hook for fetching news data (compatible with Next.js)
+const useNewsData = (apiEndpoint: string, filters: { region: string; cluster: string }) => {
+  const { region, cluster } = filters;
+  
+  const queryParams = new URLSearchParams();
+  if (region && region !== 'all') queryParams.append('region', region);
+  if (cluster && cluster !== 'all') queryParams.append('cluster', cluster);
+  
+  const finalApiEndpoint = `${apiEndpoint}?${queryParams.toString()}`;
+
+  return useQuery<NewsItem[]>({
+    queryKey: ['news', apiEndpoint, filters],
+    queryFn: async () => {
+      const response = await fetch(finalApiEndpoint);
       if (!response.ok) {
         throw new Error('Failed to fetch news data');
       }
@@ -169,7 +211,10 @@ export const NewsFeedSidebar = ({
 }: NewsFeedSidebarProps) => {
   const queryClient = useQueryClient();
   const pathname = usePathname();
-  const { data: newsItems, isLoading, error, refetch } = useNewsData(apiEndpoint);
+  const [region, setRegion] = React.useState('all');
+  const [cluster, setCluster] = React.useState('all');
+  const { data: newsItems, isLoading, error, refetch } = useNewsData(apiEndpoint, { region, cluster });
+  const { data: filterOptions, isLoading: filtersLoading } = useFilterOptions();
   const [hidingItems, setHidingItems] = React.useState<Set<number>>(new Set());
 
   const handleHideItem = async (itemId: number) => {
@@ -255,10 +300,43 @@ export const NewsFeedSidebar = ({
         </div>
       </div>
 
+      {/* Filters */}
+      <div className="px-4 pb-4 border-b border-border bg-card">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <Select value={region} onValueChange={setRegion}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All Regions" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Regions</SelectItem>
+              {filterOptions?.regions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={cluster} onValueChange={setCluster}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All Clusters" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Clusters</SelectItem>
+              {filterOptions?.clusters.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       {/* Scrollable Feed Area */}
       <ScrollArea className="bg-card flex-grow">
         <div className="p-4 space-y-4">
-          {isLoading ? (
+          {isLoading || filtersLoading ? (
             Array.from({ length: 3 }).map((_, i) => (
               <NewsItemSkeleton key={i} />
             ))
@@ -274,7 +352,7 @@ export const NewsFeedSidebar = ({
             ))
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              No news items available
+              {filtersLoading ? 'Loading filters...' : 'No news items available'}
             </div>
           )}
         </div>

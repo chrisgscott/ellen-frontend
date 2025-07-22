@@ -18,17 +18,36 @@ function cleanHtmlText(text: string): string {
   return decoded.replace(/<[^>]*>/g, '');
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = await createClient();
     
     // Fetch news items from rss_feeds table
-    const { data: newsItems, error } = await supabase
+        const { searchParams } = new URL(request.url);
+    const region = searchParams.get('region');
+    const source = searchParams.get('source');
+    const cluster = searchParams.get('cluster');
+
+    let query = supabase
       .from('rss_feeds')
       .select('*')
-      .eq('show', true) // Only show items marked as visible
-      .order('created_at', { ascending: false })
-      .limit(20); // Limit to most recent 20 items
+      .eq('show', true); // Only show items marked as visible
+
+    if (region) {
+      query = query.eq('geographic_focus', region);
+    }
+    if (source) {
+      // Using ilike for case-insensitive matching of source names
+      query = query.ilike('source', `%${source}%`);
+    }
+    if (cluster) {
+      query = query.eq('interest_cluster', cluster);
+    }
+
+    // Add ordering and limit after applying filters
+    query = query.order('created_at', { ascending: false }).limit(20);
+
+    const { data: newsItems, error } = await query;
 
     if (error) {
       console.error('Error fetching news:', error);
