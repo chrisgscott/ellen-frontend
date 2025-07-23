@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { NavLinks } from './nav-links';
 import {
   Select,
@@ -11,6 +12,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { NewListModal } from '@/components/new-list-modal';
+import { Plus, Globe, User, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface Material {
   id: string;
@@ -21,6 +30,8 @@ interface Material {
 interface FilterOption {
   value: string;
   label: string;
+  isGlobal?: boolean;
+  isOwnedByUser?: boolean;
 }
 
 interface FilterOptions {
@@ -74,8 +85,50 @@ const MaterialsSkeleton = () => (
 
 export function ResearchSidebar() {
   const [listFilter, setListFilter] = React.useState('all');
+  const [showNewListModal, setShowNewListModal] = React.useState(false);
+  const [editingList, setEditingList] = React.useState<any>(null);
   const { data: materials, isLoading: materialsLoading, error } = useMaterialsData(listFilter);
   const { data: filterOptions, isLoading: filtersLoading } = useFilterOptions();
+  
+  const queryClient = useQueryClient();
+
+  // Delete list mutation
+  const deleteListMutation = useMutation({
+    mutationFn: async (listId: string) => {
+      const response = await fetch(`/api/materials/lists?id=${listId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete list');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast.success('List deleted successfully!');
+      queryClient.invalidateQueries({ queryKey: ['material-filters'] });
+      queryClient.invalidateQueries({ queryKey: ['materials'] });
+      // Reset filter if we deleted the currently selected list
+      if (listFilter !== 'all') {
+        setListFilter('all');
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete list');
+    },
+  });
+
+  const handleEditList = (option: any) => {
+    console.log('handleEditList called with option:', option);
+    setEditingList(option);
+    setShowNewListModal(true);
+  };
+
+  const handleDeleteList = async (listId: string, listName: string) => {
+    if (window.confirm(`Are you sure you want to delete the list "${listName}"? This action cannot be undone.`)) {
+      deleteListMutation.mutate(listId);
+    }
+  };
 
   if (error) {
     return (
@@ -101,10 +154,53 @@ export function ResearchSidebar() {
           <SelectContent>
             <SelectItem value="all">All Lists</SelectItem>
             {filterOptions?.lists.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
+              <div key={option.value} className="flex items-center">
+                <SelectItem value={option.value} className="flex-1">
+                  <div className="flex items-center gap-2">
+                    {option.isGlobal ? (
+                      <Globe className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <User className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    {option.label}
+                  </div>
+                </SelectItem>
+                {option.isOwnedByUser && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button 
+                        className="p-1 hover:bg-accent rounded-sm"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleEditList(option)}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => handleDeleteList(option.value, option.label)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             ))}
+            <div className="border-t mt-1 pt-1">
+              <button
+                onClick={() => setShowNewListModal(true)}
+                className="w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+                New List
+              </button>
+            </div>
           </SelectContent>
         </Select>
       </div>
@@ -118,8 +214,19 @@ export function ResearchSidebar() {
           <div className="p-4 text-center text-muted-foreground">
             {filtersLoading ? 'Loading filters...' : 'No materials found'}
           </div>
-        )}
+        )}  
       </nav>
+      
+      <NewListModal 
+        open={showNewListModal} 
+        onOpenChange={(open) => {
+          setShowNewListModal(open);
+          if (!open) {
+            setEditingList(null);
+          }
+        }}
+        editingList={editingList}
+      />
     </div>
   );
 }

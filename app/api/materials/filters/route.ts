@@ -4,33 +4,29 @@ import { createClient } from '@/lib/supabase/server';
 export async function GET() {
   try {
     const supabase = await createClient();
-
-    // Get distinct list values using unnest to expand array columns
+    
+    // Get current user
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    // Get all lists that the user can see (global lists + their own lists)
     const { data, error } = await supabase
-      .from('materials')
-      .select('lists')
-      .not('lists', 'is', null);
+      .from('materials_lists')
+      .select('id, name, is_global, created_by')
+      .order('name');
 
     if (error) {
       console.error('Database error:', error);
       return NextResponse.json({ error: 'Failed to fetch filter options' }, { status: 500 });
     }
 
-    // Extract unique list values from array columns
-    const allLists = new Set<string>();
-    data.forEach(row => {
-      if (row.lists && Array.isArray(row.lists)) {
-        row.lists.forEach((list: string) => {
-          if (list && list.trim()) {
-            allLists.add(list.trim());
-          }
-        });
-      }
-    });
-
-    const lists = Array.from(allLists).sort().map(value => ({
-      value,
-      label: value
+    const lists = data.map(list => ({
+      value: list.id,
+      label: list.name,
+      isGlobal: list.is_global,
+      isOwnedByUser: list.created_by === userData.user.id
     }));
 
     return NextResponse.json({ lists });

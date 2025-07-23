@@ -14,7 +14,9 @@ import {
     Network,
     Lightbulb,
     Users,
-    BookCopy
+    BookCopy,
+    Globe,
+    User
 } from 'lucide-react';
 import { AskEllenButton } from '../_components/ask-ellen-button';
 import TocSidebar from '../_components/toc-sidebar';
@@ -234,7 +236,16 @@ export default async function MaterialPage({ params }: PageProps) {
 
   const { data: materialData, error } = await supabase
     .from("materials")
-    .select("*")
+    .select(`
+      *,
+      materials_list_items(
+        materials_lists(
+          id,
+          name,
+          is_global
+        )
+      )
+    `)
     .eq("material", materialName)
     .single();
 
@@ -252,9 +263,26 @@ export default async function MaterialPage({ params }: PageProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 pb-8 border-b">
             <div>
-                <p className="font-semibold mr-2">Classification:</p>
+                <p className="font-semibold mr-2">Lists:</p>
                 <div className="flex flex-wrap gap-2 mt-2">
-                    {materialData.lists?.map((list: string) => <Badge key={list}>{list}</Badge>) ?? <p>N/A</p>}
+                    {materialData.materials_list_items && materialData.materials_list_items.length > 0 ? (
+                        materialData.materials_list_items.map((item: { materials_lists: { id: string; name: string; is_global: boolean } }) => (
+                            <Badge 
+                                key={item.materials_lists.id} 
+                                variant={item.materials_lists.is_global ? "default" : "secondary"}
+                                className={`flex items-center gap-1 ${item.materials_lists.is_global ? "" : "border-dashed"}`}
+                            >
+                                {item.materials_lists.is_global ? (
+                                    <Globe className="h-3 w-3" />
+                                ) : (
+                                    <User className="h-3 w-3" />
+                                )}
+                                {item.materials_lists.name}
+                            </Badge>
+                        ))
+                    ) : (
+                        <p className="text-muted-foreground">Not in any lists</p>
+                    )}
                 </div>
             </div>
             <div className="space-y-2">
