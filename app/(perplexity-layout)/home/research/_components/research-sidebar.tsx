@@ -86,7 +86,7 @@ const MaterialsSkeleton = () => (
 export function ResearchSidebar() {
   const [listFilter, setListFilter] = React.useState('all');
   const [showNewListModal, setShowNewListModal] = React.useState(false);
-  const [editingList, setEditingList] = React.useState<any>(null);
+  const [editingList, setEditingList] = React.useState<FilterOption | null>(null);
   const { data: materials, isLoading: materialsLoading, error } = useMaterialsData(listFilter);
   const { data: filterOptions, isLoading: filtersLoading } = useFilterOptions();
   
@@ -118,16 +118,17 @@ export function ResearchSidebar() {
     },
   });
 
-  const handleEditList = (option: any) => {
+  const handleEditList = (option: FilterOption) => {
     console.log('handleEditList called with option:', option);
     setEditingList(option);
     setShowNewListModal(true);
   };
 
   const handleDeleteList = async (listId: string, listName: string) => {
-    if (window.confirm(`Are you sure you want to delete the list "${listName}"? This action cannot be undone.`)) {
-      deleteListMutation.mutate(listId);
-    }
+    const confirmed = window.confirm(`Are you sure you want to delete "${listName}"? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    deleteListMutation.mutate(listId);
   };
 
   if (error) {

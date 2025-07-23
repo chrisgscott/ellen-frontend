@@ -156,7 +156,7 @@ export function NewListModal({ open, onOpenChange, editingList }: NewListModalPr
       setIsGlobal(fullListData.is_global ? 'global' : 'personal');
       
       // Extract materials from the nested structure
-      const materials = fullListData.materials_list_items?.map((item: any) => ({
+      const materials = fullListData.materials_list_items?.map((item: { materials: { id: string; material: string } }) => ({
         id: item.materials.id,
         material: item.materials.material
       })) || [];
@@ -300,7 +300,7 @@ export function NewListModal({ open, onOpenChange, editingList }: NewListModalPr
                   </div>
                 ) : (
                   <div className="p-4 text-center text-muted-foreground">
-                    No materials found matching "{searchQuery}"
+                    No materials found matching &ldquo;{searchQuery}&rdquo;
                   </div>
                 )}
               </div>
