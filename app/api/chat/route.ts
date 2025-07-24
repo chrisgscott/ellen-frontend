@@ -38,6 +38,7 @@ type PineconeDocument = {
     properties?: string;
     applications?: string;
     namespace?: string;
+    framework_name?: string;
   };
   text: string;
 };
@@ -48,7 +49,7 @@ type PineconeHit = {
   fields: Record<string, unknown>;
 };
 
-type PineconeNamespace = 'documents' | 'materials';
+type PineconeNamespace = 'documents' | 'materials' | 'ellen-frameworks';
 
 // Tool definitions are now managed by the tool registry system
 // See /lib/tools/ for individual tool implementations
@@ -339,22 +340,24 @@ const searchSupabaseMaterials = async (query: string, supabase: Awaited<ReturnTy
 // Search multiple Pinecone namespaces and combine results
 const searchMultipleNamespaces = async (query: string): Promise<PineconeDocument[]> => {
   try {
-    console.log('🔍 RAG: Searching Pinecone namespaces:', ['documents', 'materials']);
+    console.log('🔍 RAG: Searching Pinecone namespaces:', ['documents', 'materials', 'ellen-frameworks']);
     
-    // Search both namespaces in parallel
-    const [documentsResults, materialsResults] = await Promise.all([
+    // Search all three namespaces in parallel
+    const [documentsResults, materialsResults, frameworksResults] = await Promise.all([
       searchPineconeNamespace(query, 'documents'),
-      searchPineconeNamespace(query, 'materials')
+      searchPineconeNamespace(query, 'materials'),
+      searchPineconeNamespace(query, 'ellen-frameworks')
     ]);
 
     // Combine and sort by relevance score
-    const allResults = [...documentsResults, ...materialsResults]
+    const allResults = [...documentsResults, ...materialsResults, ...frameworksResults]
       .sort((a, b) => (b.score || 0) - (a.score || 0))
-      .slice(0, 6); // Top 6 results total
+      .slice(0, 8); // Increased to 8 results to accommodate frameworks
 
     console.log('🔍 RAG: Retrieved context:', {
       documentsCount: documentsResults.length,
       materialsCount: materialsResults.length,
+      frameworksCount: frameworksResults.length,
       totalResults: allResults.length,
       topScores: allResults.slice(0, 3).map(r => r.score)
     });
@@ -570,6 +573,15 @@ export async function POST(req: NextRequest): Promise<Response> {
               });
             }
             
+            // Ellen frameworks context (strategic decision-making guidance)
+            const frameworksContext = pineconeContext.filter(doc => doc.metadata.namespace === 'ellen-frameworks');
+            if (frameworksContext.length > 0) {
+              contextPrompt += '\n\nStrategic Analysis Frameworks:';
+              frameworksContext.forEach((doc, idx) => {
+                contextPrompt += `\n[FWK-${idx + 1}] ${doc.metadata.framework_name || doc.metadata.title || 'Framework'}:\n${doc.text}`;
+              });
+            }
+            
             // Supabase structured materials data
             if (supabaseMaterials.length > 0) {
               contextPrompt += '\n\nMaterials Database (Structured):';
@@ -668,11 +680,26 @@ export async function POST(req: NextRequest): Promise<Response> {
                 - [VEC-X]: Materials vector database entries with properties and applications
                 - [DB-X]: Structured materials database with specifications and summaries
                 - [WEB]: Current web search results with real-time information`
-                : `You are an critical materials AI analyst with access to a comprehensive critical and strategic materials database.
+                : `You are Ellen, an expert AI assistant specializing in strategic materials intelligence with access to comprehensive databases and strategic analysis frameworks.
+                
+                STRATEGIC REASONING APPROACH:
+                - Apply systematic analytical thinking that considers multiple strategic perspectives including competitive positioning, risk assessment, resource optimization, and stakeholder engagement
+                - When analyzing situations, evaluate both immediate tactical responses and long-term strategic implications
+                - Consider supply chain vulnerabilities, competitive dynamics, stakeholder alignment, resource constraints, and strategic positioning
+                - For risk analysis, apply comprehensive threat characterization and prioritization methodologies
+                - Balance attention warranted versus attention given when discussing resource allocation decisions
+                - Consider engagement strategies that optimize collaboration across agencies, allies, and industry partners
+                
+                ANALYSIS METHODOLOGY:
+                - Assess strategic lifecycle considerations: how actors approach, negotiate, build, and operate within resource systems
+                - Apply structured approaches to counter adversarial influence through competitive, collaborative, and defensive strategies
+                - Evaluate capability gaps and alignment between stated objectives and actual execution
+                - Consider mission realignment scenarios and change management implications
                 
                 INSTRUCTIONS:
-                - Use the provided context from documents and materials database to answer questions accurately
+                - Use the provided context from documents, materials database, and strategic frameworks to answer questions accurately
                 - When referencing materials, cite specific properties, applications, and characteristics from the context
+                - Apply strategic thinking patterns naturally without explicitly naming specific frameworks
                 - If context is provided, prioritize information from the context over general knowledge
                 - Be specific about material properties, applications, and engineering characteristics
                 - If asked about materials not in the context, clearly state the limitation
@@ -680,6 +707,7 @@ export async function POST(req: NextRequest): Promise<Response> {
                 CONTEXT SOURCES:
                 - [DOC-X]: Research documents, reports, and technical literature
                 - [VEC-X]: Materials vector database entries with properties and applications
+                - [FWK-X]: Strategic analysis frameworks for decision-making guidance
                 - [DB-X]: Structured materials database with specifications and summaries`,
             },
             ...history.map(msg => ({
