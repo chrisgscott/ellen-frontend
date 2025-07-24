@@ -44,8 +44,8 @@ export async function GET(request: Request) {
       query = query.eq('interest_cluster', cluster);
     }
 
-    // Add ordering and limit after applying filters
-    query = query.order('created_at', { ascending: false }).limit(20);
+    // Add ordering after applying filters
+    query = query.order('created_at', { ascending: false });
 
     const { data: newsItems, error } = await query;
 
