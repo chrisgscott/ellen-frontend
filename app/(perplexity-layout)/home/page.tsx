@@ -83,17 +83,32 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)]">
-      <div className="absolute top-4 right-4 hidden">
+    <div className="relative flex flex-col items-center justify-center h-full bg-blue-50 overflow-hidden">
+      {/* CSS Waves Background */}
+      <div className="absolute inset-0 z-0">
+        {/* Wave 1 - Bottom layer */}
+        <svg className="absolute bottom-0 w-full h-full" viewBox="0 0 1200 800" preserveAspectRatio="none">
+          <path d="M0,400 C300,300 600,500 1200,400 L1200,800 L0,800 Z" fill="#dbeafe" opacity="0.5" />
+        </svg>
+        {/* Wave 2 - Middle layer */}
+        <svg className="absolute bottom-0 w-full h-full" viewBox="0 0 1200 800" preserveAspectRatio="none">
+          <path d="M0,500 C400,350 800,650 1200,500 L1200,800 L0,800 Z" fill="#bfdbfe" opacity="0.4" />
+        </svg>
+        {/* Wave 3 - Top layer */}
+        <svg className="absolute bottom-0 w-full h-full" viewBox="0 0 1200 800" preserveAspectRatio="none">
+          <path d="M0,600 C350,450 850,750 1200,600 L1200,800 L0,800 Z" fill="#93c5fd" opacity="0.3" />
+        </svg>
+      </div>
+      <div className="absolute top-4 right-4 hidden z-10">
         <Link href="/dashboard">
           <Button variant="outline" size="sm">Back to Original Dashboard</Button>
         </Link>
       </div>
-      <div className="w-full max-w-3xl bg-primary/5 p-12 rounded-xl text-center">
+      <div className="relative z-10 w-full max-w-3xl bg-white/70 backdrop-blur-md border border-white/40 p-12 rounded-xl text-center shadow-2xl">
         {/* Logo and Title */}
         <div className="mb-6">
-          <h1 className="text-4xl font-bold text-black/90 mb-3">{greeting}</h1>
-          <p className="text-lg text-black/90">I&apos;m ELLEN, your critical materials AI analyst.</p>
+          <h1 className="text-4xl font-bold text-gray-800 mb-3">{greeting}</h1>
+          <p className="text-lg text-gray-700">I&apos;m ELLEN, your critical materials AI analyst.</p>
         </div>
 
         {/* Search Form */}
@@ -125,9 +140,9 @@ export default function HomePage() {
       </div>
 
       {/* Navigation Cards */}
-      <div className="mt-16 w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="relative z-10 mt-16 w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-4">
         <Link href="/home/news" className="block">
-          <Card className="hover:bg-muted/50 transition-colors h-full">
+          <Card className="hover:bg-muted transition-colors h-full">
             <div className="p-3 flex items-center gap-3">
               <Newspaper className="h-6 w-6 text-primary flex-shrink-0" />
               <div>
@@ -138,7 +153,7 @@ export default function HomePage() {
           </Card>
         </Link>
         <Link href="/home/research" className="block">
-          <Card className="hover:bg-muted/50 transition-colors h-full">
+          <Card className="hover:bg-muted transition-colors h-full">
             <div className="p-3 flex items-center gap-3">
               <FlaskConical className="h-6 w-6 text-primary flex-shrink-0" />
               <div>
@@ -149,7 +164,7 @@ export default function HomePage() {
           </Card>
         </Link>
         <Link href="/home/spaces" className="block">
-          <Card className="hover:bg-muted/50 transition-colors h-full">
+          <Card className="hover:bg-muted transition-colors h-full">
             <div className="p-3 flex items-center gap-3">
               <Folders className="h-6 w-6 text-primary flex-shrink-0" />
               <div>
@@ -162,10 +177,10 @@ export default function HomePage() {
       </div>
 
       {/* Live Market Prices */}
-      <div className="mt-8 w-full max-w-5xl">
+      <div className="relative z-10 mt-8 w-full max-w-5xl">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           {mockPricingData.map((item, index) => (
-            <Card key={index} className="p-3 flex flex-col justify-between bg-muted/25 hover:bg-muted/50 transition-colors cursor-pointer">
+            <Card key={index} className="p-3 flex flex-col justify-between bg-muted/80 hover:bg-muted/80 transition-colors">
               <div>
                 <p className="font-medium text-xs text-foreground">{item.name}</p>
                 <p className="text-xs text-muted-foreground">{item.unit}</p>
