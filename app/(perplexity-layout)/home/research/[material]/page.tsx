@@ -5,7 +5,7 @@ import remarkGfm from "remark-gfm";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
+
 import {
     Building,
     BarChart3,
@@ -51,17 +51,25 @@ const DataPoint = ({ label, value, unit = '' }: { label: string; value: string |
   <p><span className="font-semibold">{label}:</span> {value ?? 'N/A'}{unit}</p>
 );
 
-const MarkdownText = ({ label, content }: { label: string; content: string | null }) => {
-  if (!content || content.trim() === '') {
+const MarkdownText = ({ label, content }: { label: string; content: string | null | unknown }) => {
+  // Handle null, undefined, or non-string content
+  if (!content) {
+    return <p><span className="font-semibold">{label}:</span> N/A</p>;
+  }
+
+  // Convert content to string if it's not already
+  const stringContent = typeof content === 'string' ? content : String(content);
+  
+  if (stringContent.trim() === '') {
     return <p><span className="font-semibold">{label}:</span> N/A</p>;
   }
 
   // Extract content from JSON if needed
-  let processedContent = content;
+  let processedContent = stringContent;
   try {
-    const parsed = JSON.parse(content);
+    const parsed = JSON.parse(stringContent);
     if (parsed && typeof parsed === 'object' && parsed.value) {
-      processedContent = parsed.value;
+      processedContent = String(parsed.value);
     }
   } catch {
     // Not JSON, use content as-is
@@ -88,23 +96,61 @@ const MarkdownText = ({ label, content }: { label: string; content: string | nul
 };
 
 const Score = ({ label, value, max = 5 }: { label: string; value: number; max?: number }) => {
-  const percentage = value ? (value / max) * 100 : 0;
-  let variant: "success" | "warning" | "danger" | "default" = "success";
-  if (value) {
-    if (value >= 4) {
-      variant = "danger";
-    } else if (value >= 3) {
-      variant = "warning";
+  // Determine badge color based on score (green = best, red = worst)
+  const getBadgeColor = (score: number, maxScore: number) => {
+    if (!score) return 'bg-muted text-muted-foreground';
+    // Use exact score values for 5-point scale to ensure distinct colors
+    if (maxScore === 5) {
+      if (score === 5) return 'bg-red-600/90 text-white'; // Score 5 - Darkest red
+      if (score === 4) return 'bg-red-500/90 text-white'; // Score 4 - Red
+      if (score === 3) return 'bg-orange-500/90 text-white'; // Score 3 - Orange
+      if (score === 2) return 'bg-yellow-500/90 text-white'; // Score 2 - Yellow
+      if (score === 1) return 'bg-lime-400/90 text-black'; // Score 1 - Light green
     }
-  }
+    // Fallback to normalized ranges for other scales
+    const normalized = score / maxScore;
+    if (normalized >= 0.8) return 'bg-red-500/90 text-white';
+    if (normalized >= 0.6) return 'bg-orange-500/90 text-white';
+    if (normalized >= 0.4) return 'bg-yellow-500/90 text-white';
+    if (normalized >= 0.2) return 'bg-lime-400/90 text-black';
+    return 'bg-green-500/90 text-white';
+  };
 
   return (
-    <div className="flex items-center space-x-4">
-      <p className="w-1/2 font-semibold">{label}:</p>
-      <div className="w-1/2 flex items-center space-x-2">
-        <span>{value ?? 'N/A'}/{max}</span>
-        <Progress value={percentage} variant={variant} />
-      </div>
+    <div className="flex items-center gap-3">
+      <span className="font-semibold">{label}:</span>
+      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getBadgeColor(value, max)}`}>
+        {value ?? 'N/A'}/{max}
+      </span>
+    </div>
+  );
+};
+
+const ScoreCard = ({ label, value, max = 5 }: { label: string; value: number; max?: number }) => {
+  // Determine background color based on score (green = best, red = worst)
+  const getBackgroundColor = (score: number, maxScore: number) => {
+    if (!score) return 'bg-muted/30';
+    // Use exact score values for 5-point scale to ensure distinct colors
+    if (maxScore === 5) {
+      if (score === 5) return 'bg-red-600/20 border-red-300'; // Score 5 - Darkest red
+      if (score === 4) return 'bg-red-500/20 border-red-200'; // Score 4 - Red
+      if (score === 3) return 'bg-orange-500/20 border-orange-200'; // Score 3 - Orange
+      if (score === 2) return 'bg-yellow-500/20 border-yellow-200'; // Score 2 - Yellow
+      if (score === 1) return 'bg-lime-400/20 border-lime-300'; // Score 1 - Light green
+    }
+    // Fallback to normalized ranges for other scales
+    const normalized = score / maxScore;
+    if (normalized >= 0.8) return 'bg-red-500/20 border-red-200';
+    if (normalized >= 0.6) return 'bg-orange-500/20 border-orange-200';
+    if (normalized >= 0.4) return 'bg-yellow-500/20 border-yellow-200';
+    if (normalized >= 0.2) return 'bg-lime-400/20 border-lime-300';
+    return 'bg-green-500/20 border-green-200';
+  };
+
+  return (
+    <div className={`text-center p-4 rounded-lg border ${getBackgroundColor(value, max)}`}>
+      <div className="text-2xl font-bold text-primary">{value || 'N/A'}/{max}</div>
+      <div className="text-sm text-muted-foreground">{label}</div>
     </div>
   );
 };
@@ -217,11 +263,13 @@ const StringArrayDisplay = ({ content, displayAs = 'badges' }: { content: string
 
 
 const reportSections = [
+  { id: 'strategic-dashboard', title: 'Strategic Assessment Dashboard', icon: BarChart3 },
   { id: 'market-overview', title: 'Market Overview', icon: Building },
   { id: 'trading-intelligence', title: 'Trading Intelligence', icon: BarChart3 },
   { id: 'investment-analysis', title: 'Investment Analysis', icon: PieChart },
   { id: 'national-security-assessment', title: 'National Security Assessment', icon: ShieldCheck },
   { id: 'supply-chain-intelligence', title: 'Supply Chain Intelligence', icon: Network },
+  { id: 'operational-considerations', title: 'Operational Considerations', icon: Building },
   { id: 'strategic-recommendations', title: 'Strategic Recommendations', icon: Lightbulb },
   { id: 'key-stakeholders', title: 'Key Stakeholders', icon: Users },
   { id: 'sources-data-quality', title: 'Sources & Data Quality', icon: BookCopy },
@@ -284,6 +332,14 @@ export default async function MaterialPage({ params }: PageProps) {
                         <p className="text-muted-foreground">Not in any lists</p>
                     )}
                 </div>
+                {materialData.symbol && (
+                    <div className="mt-4">
+                        <p className="font-semibold">Symbol: <span className="font-normal">{materialData.symbol}</span></p>
+                        {materialData.atomic_number && (
+                            <p className="font-semibold">Atomic Number: <span className="font-normal">{materialData.atomic_number}</span></p>
+                        )}
+                    </div>
+                )}
             </div>
             <div className="space-y-2">
                 <Score label="Overall Risk Score" value={materialData.overall_risk_score} />
@@ -299,11 +355,26 @@ export default async function MaterialPage({ params }: PageProps) {
                     </div>
                 )}
                 
-                <article className="prose prose-sm dark:prose-invert max-w-none mb-12">
+                <div className="prose prose-sm dark:prose-invert max-w-none mb-12">
                     <p>{materialData.summary || 'No summary available.'}</p>
-                </article>
+                </div>
 
                 <Section id={reportSections[0].id} title={reportSections[0].title} icon={reportSections[0].icon}>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <ScoreCard label="Overall Risk" value={materialData.overall_risk_score} />
+                        <ScoreCard label="Criticality" value={materialData.criticality_score} />
+                        <ScoreCard label="National Security" value={materialData.national_security_score} />
+                        <ScoreCard label="Strategic Importance" value={materialData.strategic_importance_score} />
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <ScoreCard label="Supply Chain Risk" value={materialData.supply_chain_vulnerability_score} />
+                        <ScoreCard label="Demand Outlook" value={materialData.demand_outlook_score} />
+                        <ScoreCard label="Investment Opportunity" value={materialData.investment_opportunity_score} />
+                        <ScoreCard label="Market Timing" value={materialData.market_timing_score} />
+                    </div>
+                </Section>
+
+                <Section id={reportSections[1].id} title={reportSections[1].title} icon={reportSections[1].icon}>
                     <SubSection title="Market Fundamentals">
                         <DataPoint label="Market Size" value={`$${materialData.market_size_usd_billions}B globally`} />
                         <DataPoint label="Annual Growth" value={materialData.annual_growth_rate_pct ? `${(materialData.annual_growth_rate_pct * 100).toFixed(2)}%` : "N/A"} />
@@ -315,9 +386,23 @@ export default async function MaterialPage({ params }: PageProps) {
                         <DataPoint label="Upside Potential" value={`$${materialData.best_case_value_kg}/kg`} />
                         <DataPoint label="Typical Margins" value={materialData.typical_margin_pct_low && materialData.typical_margin_pct_high ? `${(materialData.typical_margin_pct_low * 100).toFixed(2)}% - ${(materialData.typical_margin_pct_high * 100).toFixed(2)}%` : "N/A"} />
                     </SubSection>
+                    <SubSection title="Market Dynamics">
+                        <MarkdownText label="Demand Outlook" content={materialData.demand_outlook} />
+                        <MarkdownText label="Supply Outlook" content={materialData.supply_outlook} />
+                        <MarkdownText label="Price Trends" content={materialData.price_trends} />
+                        <div className="grid grid-cols-3 gap-4 mt-4">
+                            <Score label="Demand Outlook" value={materialData.demand_outlook_score} />
+                            <Score label="Supply Outlook" value={materialData.supply_outlook_score} />
+                            <Score label="Price Trends" value={materialData.price_trends_score} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 mt-4">
+                            <Score label="Demand Elasticity" value={materialData.demand_elasticity_score} />
+                            <DataPoint label="Market Concentration (HHI)" value={materialData.market_concentration_hhi} />
+                        </div>
+                    </SubSection>
                 </Section>
 
-                <Section id={reportSections[1].id} title={reportSections[1].title} icon={reportSections[1].icon}>
+                <Section id={reportSections[2].id} title={reportSections[2].title} icon={reportSections[2].icon}>
                     <SubSection title="Deal Characteristics">
                         <table className="w-full text-left border-collapse">
                             <thead>
@@ -328,20 +413,38 @@ export default async function MaterialPage({ params }: PageProps) {
                             </thead>
                             <tbody>
                                 <tr><td className="border-b p-2">Typical Lot Size</td><td className="border-b p-2">{materialData.typical_lot_size_kg} kg</td></tr>
+                                <tr><td className="border-b p-2">Deal Size Range</td><td className="border-b p-2">${materialData.typical_deal_size_min_usd} - ${materialData.typical_deal_size_max_usd}</td></tr>
                                 <tr><td className="border-b p-2">Minimum Order</td><td className="border-b p-2">${materialData.minimum_order_value_usd}</td></tr>
                                 <tr><td className="border-b p-2">Settlement Period</td><td className="border-b p-2">{materialData.typical_settlement_days} days</td></tr>
+                                <tr><td className="border-b p-2">Annual Trading Volume</td><td className="border-b p-2">{materialData.trading_volume_annual_tonnes} tonnes</td></tr>
+                                <tr><td className="border-b p-2">Inventory Turnover</td><td className="border-b p-2">{materialData.inventory_turnover_days} days</td></tr>
                                 <tr><td className="border-b p-2">Major Trading Hubs</td><td className="border-b p-2"><StringArrayDisplay content={materialData.major_trading_hubs} displayAs="text" /></td></tr>
                             </tbody>
                         </table>
                     </SubSection>
                     <SubSection title="Market Dynamics">
-                        <Score label="Liquidity Score" value={materialData.market_liquidity_score} />
-                        <Score label="Price Discovery" value={materialData.price_discovery_score} />
-                        <Score label="Market Maker Potential" value={materialData.market_maker_potential} />
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <Score label="Liquidity Score" value={materialData.market_liquidity_score} />
+                            <Score label="Price Discovery" value={materialData.price_discovery_score} />
+                            <Score label="Market Maker Potential" value={materialData.market_maker_potential} />
+                            <Score label="Deal Frequency" value={materialData.deal_frequency_score} />
+                            <Score label="Brokerage Opportunity" value={materialData.brokerage_opportunity_score} />
+                            <Score label="Client Stickiness" value={materialData.client_stickiness_score} />
+                        </div>
+                    </SubSection>
+                    <SubSection title="Trading Risks">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <Score label="Counterparty Concentration" value={materialData.counterparty_concentration_score} />
+                            <Score label="Transaction Size Risk" value={materialData.transaction_size_risk_score} />
+                            <Score label="Contract Settlement Risk" value={materialData.contract_settlement_risk_score} />
+                            <Score label="Relationship Dependency" value={materialData.relationship_dependency_score} />
+                        </div>
+                        <MarkdownText label="Arbitrage Opportunities" content={materialData.arbitrage_opportunities} />
+                        <MarkdownText label="Seasonal Demand Patterns" content={materialData.seasonal_demand_patterns} />
                     </SubSection>
                 </Section>
 
-                <Section id={reportSections[2].id} title={reportSections[2].title} icon={reportSections[2].icon}>
+                <Section id={reportSections[3].id} title={reportSections[3].title} icon={reportSections[3].icon}>
                     <SubSection title="Investment Metrics">
                         <table className="w-full text-left border-collapse">
                             <thead>
@@ -358,26 +461,105 @@ export default async function MaterialPage({ params }: PageProps) {
                             </tbody>
                         </table>
                     </SubSection>
-                </Section>
-
-                
-                <Section id={reportSections[3].id} title={reportSections[3].title} icon={reportSections[3].icon}>
-                    <MarkdownText label="National Security Implications" content={materialData.national_security_implications} />
-                    <MarkdownText label="Dual-Use Potential" content={materialData.dual_use_potential} />
-                    <SubSection title="Risk Scores">
-                        <Score label="Foreign Influence Score" value={materialData.foreign_influence_score} />
-                        <Score label="Supply Chain Weaponization Risk" value={materialData.supply_chain_weaponization_risk} />
-                        <Score label="Critical Infrastructure Dependency" value={materialData.critical_infrastructure_dependency} />
-                        <Score label="Regulatory Compliance Risk Score" value={materialData.regulatory_compliance_risk_score} />
+                    <SubSection title="Risk Assessment">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <Score label="ESG Risk" value={materialData.esg_risk_score} />
+                            <Score label="Technology Disruption Risk" value={materialData.technology_disruption_risk_score} />
+                            <Score label="Security Opportunity" value={materialData.security_opportunity_score} />
+                        </div>
                     </SubSection>
                 </Section>
 
+                
                 <Section id={reportSections[4].id} title={reportSections[4].title} icon={reportSections[4].icon}>
-                    <MarkdownText label="Source Locations" content={materialData.source_locations} />
-                    <MarkdownText label="Supply Chain" content={materialData.supply} />
-                    <MarkdownText label="Ownership" content={materialData.ownership} />
-                    <MarkdownText label="Processing" content={materialData.processing} />
-                    <MarkdownText label="Chokepoints" content={materialData.chokepoints} />
+                    <MarkdownText label="National Security Implications" content={materialData.national_security_implications} />
+                    <MarkdownText label="Dual-Use Potential" content={materialData.dual_use_potential} />
+                    <SubSection title="Strategic Assessment">
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <p className="font-semibold mb-2">Critical to US:</p>
+                                <p className="text-sm">{materialData.critical_to_us || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p className="font-semibold mb-2">Critical to Adversaries:</p>
+                                <p className="text-sm">{materialData.critical_to_adversaries || 'N/A'}</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <p className="font-semibold mb-2">Critical to Partners:</p>
+                                <p className="text-sm">{materialData.critical_to_partners || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p className="font-semibold mb-2">Critical to Allies:</p>
+                                <p className="text-sm">{materialData.critical_to_allies || 'N/A'}</p>
+                            </div>
+                        </div>
+                    </SubSection>
+                    <SubSection title="Risk Scores">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <Score label="National Security" value={materialData.national_security_score} />
+                            <Score label="Foreign Influence" value={materialData.foreign_influence_score} />
+                            <Score label="Supply Chain Weaponization" value={materialData.supply_chain_weaponization_risk} />
+                            <Score label="Critical Infrastructure Dependency" value={materialData.critical_infrastructure_dependency} />
+                            <Score label="Regulatory Compliance Risk" value={materialData.regulatory_compliance_risk_score} />
+                            <Score label="Cyber Security Risk" value={materialData.cyber_security_risk_score} />
+                        </div>
+                    </SubSection>
+                    <SubSection title="Strategic Capabilities">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <Score label="Domestic Capability Gap" value={materialData.domestic_capability_gap_score} />
+                            <Score label="Strategic Reserve Adequacy" value={materialData.strategic_reserve_adequacy_score} />
+                        </div>
+                        <MarkdownText label="Allied Cooperation Potential" content={materialData.allied_cooperation_potential} />
+                        <MarkdownText label="Domestic Production Feasibility" content={materialData.domestic_production_feasibility} />
+                        <DataPoint label="Time to Crisis Impact" value={materialData.time_to_crisis_impact_days ? `${materialData.time_to_crisis_impact_days} days` : 'N/A'} />
+                        <MarkdownText label="SDA Opportunities" content={materialData.sda_opportunities} />
+                    </SubSection>
+                </Section>
+
+                <Section id={reportSections[5].id} title={reportSections[5].title} icon={reportSections[5].icon}>
+                    <SubSection title="Supply Sources">
+                        <MarkdownText label="Source Locations" content={materialData.source_locations} />
+                        <MarkdownText label="Current Supply" content={materialData.supply} />
+                        <MarkdownText label="Emerging Supply" content={materialData.emerging_supply} />
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                            <Score label="Supply Score" value={materialData.supply_score} />
+                            <Score label="Current Supply" value={materialData.current_supply_score} />
+                            <Score label="Emerging Supply" value={materialData.emerging_supply_score} />
+                            <Score label="Source Locations" value={materialData.source_locations_score} />
+                        </div>
+                    </SubSection>
+                    <SubSection title="Supplier Analysis">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <MarkdownText label="US Suppliers" content={materialData.suppliers_us} />
+                                <MarkdownText label="Partner Suppliers" content={materialData.suppliers_partners} />
+                            </div>
+                            <div>
+                                <MarkdownText label="Allied Suppliers" content={materialData.suppliers_allies} />
+                                <MarkdownText label="Adversary Suppliers" content={materialData.suppliers_adversaries} />
+                            </div>
+                        </div>
+                        <Score label="Suppliers Friendliness" value={materialData.suppliers_friendliness_score} />
+                    </SubSection>
+                    <SubSection title="Ownership & Control">
+                        <MarkdownText label="Ownership Structure" content={materialData.ownership} />
+                        <DataPoint label="Ownership Concentration Holder" value={materialData.ownership_concentration_holder} />
+                        <DataPoint label="Ownership Concentration Share" value={materialData.ownership_concentration_share_pct ? `${materialData.ownership_concentration_share_pct}%` : 'N/A'} />
+                        <div className="grid grid-cols-2 gap-4 mt-4">
+                            <Score label="Ownership Score" value={materialData.ownership_score} />
+                            <Score label="Ownership Concentration" value={materialData.ownership_concentration_score} />
+                        </div>
+                    </SubSection>
+                    <SubSection title="Processing & Chokepoints">
+                        <MarkdownText label="Processing" content={materialData.processing} />
+                        <MarkdownText label="Chokepoints" content={materialData.chokepoints} />
+                        <div className="grid grid-cols-2 gap-4 mt-4">
+                            <Score label="Processing Score" value={materialData.processing_score} />
+                            <Score label="Chokepoints Score" value={materialData.chokepoints_score} />
+                        </div>
+                    </SubSection>
                     <SubSection title="Vulnerability Scores">
                         <Score label="Supply Chain Vulnerability Score" value={materialData.supply_chain_vulnerability_score} />
                         <Score label="Logistics Complexity Score" value={materialData.logistics_complexity_score} />
@@ -385,18 +567,41 @@ export default async function MaterialPage({ params }: PageProps) {
                     </SubSection>
                 </Section>
 
-                <Section id={reportSections[5].id} title={reportSections[5].title} icon={reportSections[5].icon}>
+                <Section id={reportSections[6].id} title={reportSections[6].title} icon={reportSections[6].icon}>
+                    <SubSection title="Storage & Transportation">
+                        <MarkdownText label="Storage Requirements" content={materialData.storage_requirements} />
+                        <MarkdownText label="Transportation Methods" content={materialData.transportation_methods} />
+                        <MarkdownText label="Quality Specifications" content={materialData.quality_specifications} />
+                        <MarkdownText label="Shelf Life Considerations" content={materialData.shelf_life_considerations} />
+                    </SubSection>
+                    <SubSection title="Financial Considerations">
+                        <MarkdownText label="Financing Requirements" content={materialData.financing_requirements} />
+                        <MarkdownText label="Insurance Considerations" content={materialData.insurance_considerations} />
+                        <MarkdownText label="Customer Switching Costs" content={materialData.customer_switching_costs} />
+                    </SubSection>
+                </Section>
+
+                <Section id={reportSections[7].id} title={reportSections[7].title} icon={reportSections[7].icon}>
                     <MarkdownText label="Investment Thesis" content={materialData.investment_thesis} />
                     <MarkdownText label="Opportunities" content={materialData.opportunities} />
                     <MarkdownText label="Risks" content={materialData.risks} />
                     <MarkdownText label="Mitigation Recommendations" content={materialData.mitigation_recommendations} />
+                    <SubSection title="Alternative Materials">
+                        <MarkdownText label="Substitutes" content={materialData.substitutes} />
+                        <MarkdownText label="Recycling and Reuse" content={materialData.recycling_and_reuse} />
+                        <div className="grid grid-cols-2 gap-4 mt-4">
+                            <Score label="Substitutes Score" value={materialData.substitutes_score} />
+                            <Score label="Recycling/Reuse Score" value={materialData.recycling_reuse_score} />
+                            <Score label="Mitigation Feasibility" value={materialData.mitigation_feasibility_score} />
+                        </div>
+                    </SubSection>
                     <SubSection title="Strategic Scores">
                         <Score label="Strategic Importance Score" value={materialData.strategic_importance_score} />
                         <Score label="Market Timing Score" value={materialData.market_timing_score} />
                     </SubSection>
                 </Section>
 
-                <Section id={reportSections[6].id} title={reportSections[6].title} icon={reportSections[6].icon}>
+                <Section id={reportSections[8].id} title={reportSections[8].title} icon={reportSections[8].icon}>
                     <MarkdownText label="Industries" content={materialData.industries} />
                     <MarkdownText label="Key Buyers" content={materialData.buyers} />
                     <MarkdownText label="Dealers" content={materialData.dealers} />
@@ -406,7 +611,7 @@ export default async function MaterialPage({ params }: PageProps) {
                     </SubSection>
                 </Section>
 
-                <Section id={reportSections[7].id} title={reportSections[7].title} icon={reportSections[7].icon}>
+                <Section id={reportSections[9].id} title={reportSections[9].title} icon={reportSections[9].icon}>
                     <MarkdownText label="Data Sources" content={materialData.data_sources} />
                     <SubSection title="Last Updated">
                         <JsonValue jsonString={materialData.data_last_updated} />
