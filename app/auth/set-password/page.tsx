@@ -27,17 +27,20 @@ export default function SetPasswordPage() {
         const refreshToken = hashParams.get('refresh_token');
         
         if (accessToken && refreshToken) {
+          console.log('Setting session with tokens...');
           // Set the session with the tokens from the URL
-          const { error } = await supabase.auth.setSession({
+          const { error, data } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken
           });
           
           if (error) {
             console.error('Auth error:', error);
-            setError('Invalid invitation link');
+            setError(`Session error: ${error.message}`);
             return;
           }
+          
+          console.log('Session set successfully:', data.user?.email);
           
           // Clear the hash from URL after processing
           window.history.replaceState(null, '', window.location.pathname);
