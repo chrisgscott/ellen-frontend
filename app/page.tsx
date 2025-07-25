@@ -30,9 +30,16 @@ export default function HomePage() {
   console.log(' HOME PAGE: Component rendered with query:', query);
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const checkAuthAndFetchData = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
+      
+      // If no user, redirect to login (backup for middleware)
+      if (!user) {
+        router.push('/auth/login');
+        return;
+      }
+
       if (user) {
         const { data: profile } = await supabase
           .from('profiles')
@@ -44,8 +51,8 @@ export default function HomePage() {
         }
       }
     };
-    fetchProfile();
-  }, []);
+    checkAuthAndFetchData();
+  }, [router]);
 
   // Update greeting when firstName changes or on mount (client-side only)
   useEffect(() => {
