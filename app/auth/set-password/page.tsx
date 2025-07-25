@@ -16,15 +16,44 @@ export default function SetPasswordPage() {
   const supabase = createClient();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      // Check if user is authenticated (should be after invite confirmation)
+    const handleAuthFlow = async () => {
+      // Handle auth tokens from URL hash (invite callback)
+      const hash = window.location.hash;
+      if (hash) {
+        // Parse the hash parameters
+        const hashParams = new URLSearchParams(hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        
+        if (accessToken && refreshToken) {
+          console.log('Setting session with tokens from URL hash...');
+          // Set the session with the tokens from the URL
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          
+          if (error) {
+            console.error('Session error:', error);
+            setError(`Session error: ${error.message}`);
+            return;
+          }
+          
+          console.log('Session set successfully');
+          
+          // Clear the hash from URL after processing
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+      }
+      
+      // Check if user is now authenticated
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         // Not authenticated, redirect to login
         router.push('/auth/login');
       }
     };
-    checkAuth();
+    handleAuthFlow();
   }, [router, supabase]);
 
   const handleSubmit = async (e: React.FormEvent) => {

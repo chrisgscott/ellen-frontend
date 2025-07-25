@@ -14,16 +14,19 @@ export async function GET(request: NextRequest) {
   if (token_hash && type) {
     const supabase = await createClient();
 
-    const { error } = await supabase.auth.verifyOtp({
+    const { error, data } = await supabase.auth.verifyOtp({
       type,
       token_hash,
     });
     
-    console.log('OTP verification result:', { error: error?.message, type });
+    console.log('OTP verification result:', { error: error?.message, type, hasSession: !!data.session });
     
     if (!error) {
-      // For invites, redirect to password setup
-      if (type === 'invite') {
+      // For invites, we need to pass the session tokens to the client
+      if (type === 'invite' && data.session) {
+        const { access_token, refresh_token } = data.session;
+        redirect(`/auth/set-password#access_token=${access_token}&refresh_token=${refresh_token}&type=invite`);
+      } else if (type === 'invite') {
         redirect('/auth/set-password');
       } else {
         // Regular email confirmation - redirect to specified URL or home
