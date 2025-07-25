@@ -18,10 +18,15 @@ export default function SetPasswordPage() {
   useEffect(() => {
     const checkAuth = async () => {
       // Check if user is authenticated (should be after invite confirmation)
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      console.log('Set password page - auth check:', { user: user?.email, error: error?.message });
+      
       if (!user) {
+        console.log('No user found, redirecting to login');
         // Not authenticated, redirect to login
         router.push('/auth/login');
+      } else {
+        console.log('User authenticated:', user.email);
       }
     };
     checkAuth();

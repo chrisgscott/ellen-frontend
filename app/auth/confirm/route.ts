@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
-  const next = searchParams.get("next") ?? "/home";
+  // const next = searchParams.get("next") ?? "/home"; // Not needed for magic link flow
 
   if (token_hash && type) {
     const supabase = await createClient();
@@ -18,13 +18,8 @@ export async function GET(request: NextRequest) {
     });
     
     if (!error) {
-      // For invites, redirect to password setup first
-      if (type === 'invite') {
-        redirect('/auth/set-password');
-      } else {
-        // Regular email confirmation - redirect to specified URL or home
-        redirect(next);
-      }
+      // redirect user to home - no password setup needed!
+      redirect('/home');
     }
   }
 
