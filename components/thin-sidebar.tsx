@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   Home, 
-  Search, 
-  BookOpen, 
-  Grid3X3, 
+  FlaskConical,
+  Newspaper,
+  Folders,
   User, 
   LogOut,
   Shield // Added for Admin button
@@ -44,9 +44,9 @@ export function ThinSidebar() {
   
   const navItems = [
     { icon: Home, name: 'Home', href: '/home' },
-    { icon: Search, name: 'Research', href: '/home/research' },
-    { icon: BookOpen, name: 'News', href: '/home/news' },
-    { icon: Grid3X3, name: 'Spaces', href: '/home/spaces' },
+    { icon: FlaskConical, name: 'Research', href: '/home/research' },
+    { icon: Newspaper, name: 'News', href: '/home/news' },
+    { icon: Folders, name: 'Spaces', href: '/home/spaces' },
   ];
 
   return (
