@@ -21,18 +21,33 @@ export default function SetPasswordPage() {
       // Handle auth tokens from URL hash (invite callback)
       const hash = window.location.hash;
       if (hash) {
-        const { error } = await supabase.auth.getSession();
-        if (error) {
-          console.error('Auth error:', error);
-          setError('Invalid invitation link');
-          return;
+        // Parse the hash parameters
+        const hashParams = new URLSearchParams(hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        
+        if (accessToken && refreshToken) {
+          // Set the session with the tokens from the URL
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          
+          if (error) {
+            console.error('Auth error:', error);
+            setError('Invalid invitation link');
+            return;
+          }
+          
+          // Clear the hash from URL after processing
+          window.history.replaceState(null, '', window.location.pathname);
         }
       }
       
-      // Check if user is already authenticated
+      // Check if user is now authenticated
       const { data: { user } } = await supabase.auth.getUser();
-      if (user && !user.user_metadata?.invite_pending) {
-        // User is already set up, redirect to home
+      if (user && user.email_confirmed_at) {
+        // User is already confirmed, redirect to home
         router.push('/home');
       }
     };
