@@ -29,8 +29,9 @@ export function ThinSidebar() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const fetchUserRole = async () => {
-      const supabase = createClient();
+    const supabase = createClient();
+
+    const handleSession = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setIsAuthenticated(true);
@@ -39,14 +40,22 @@ export function ThinSidebar() {
           .select('role')
           .eq('id', user.id)
           .single();
-        if (profile) {
-          setUserRole(profile.role);
-        }
+        setUserRole(profile?.role ?? null);
       } else {
         setIsAuthenticated(false);
+        setUserRole(null);
       }
     };
-    fetchUserRole();
+
+    // run once on mount
+    handleSession();
+
+    // listen for auth state changes (login/logout)
+    const { data: listener } = supabase.auth.onAuthStateChange(() => {
+      handleSession();
+    });
+
+    return () => listener.subscription.unsubscribe();
   }, []);
   
   const navItems = [
