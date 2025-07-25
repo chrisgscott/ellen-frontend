@@ -1,4 +1,10 @@
 import { MagicLinkForm } from "@/components/magic-link-form";
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Ellen | AI Critical Materials Analyst',
+  description: 'AI-powered critical materials analysis and insights.',
+};
 
 export default function Page() {
   return (
