@@ -301,6 +301,40 @@ export default async function MaterialPage({ params }: PageProps) {
     notFound();
   }
 
+  // Check if material has insufficient data (no summary)
+  const hasInsufficientData = !materialData.summary || materialData.summary.trim() === '';
+
+  if (hasInsufficientData) {
+    return (
+      <div className="flex-1 p-4 lg:p-8">
+        <header className="mb-8">
+          <div className="flex items-center justify-between">
+            <h1 className="text-4xl font-bold">{materialData.material}</h1>
+          </div>
+        </header>
+        
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-8 text-center max-w-md">
+            <div className="text-yellow-800">
+              <h3 className="text-xl font-semibold mb-3">Information Coming Soon</h3>
+              <p className="text-sm leading-relaxed">
+                We&apos;re currently compiling detailed information for this material. 
+                Please check back later or{' '}
+                <a 
+                  href={`mailto:cscott@tier-tech.com?subject=Please update ${encodeURIComponent(materialData.material)}`}
+                  className="text-yellow-700 underline hover:text-yellow-900 font-medium"
+                >
+                  bug Chris
+                </a>{' '}
+                to get {materialData.material} information added faster.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 p-4 lg:p-8">
         <header className="mb-8">
@@ -356,7 +390,7 @@ export default async function MaterialPage({ params }: PageProps) {
                 )}
                 
                 <div className="prose prose-sm dark:prose-invert max-w-none mb-12">
-                    <p>{materialData.summary || 'No summary available.'}</p>
+                    <p>{materialData.summary}</p>
                 </div>
 
                 <Section id={reportSections[0].id} title={reportSections[0].title} icon={reportSections[0].icon}>
