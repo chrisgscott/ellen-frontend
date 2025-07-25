@@ -9,13 +9,7 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get("type") as EmailOtpType | null;
   // const next = searchParams.get("next") ?? "/home"; // Not needed for magic link flow
 
-  console.log('Auth confirm route:', { 
-    url: request.url,
-    token_hash: token_hash?.substring(0, 10) + '...', 
-    type,
-    hasTokenHash: !!token_hash,
-    hasType: !!type
-  });
+
 
   if (token_hash && type) {
     const supabase = await createClient();
@@ -32,6 +26,5 @@ export async function GET(request: NextRequest) {
   }
 
   // redirect the user to an error page with some instructions
-  console.log('No token_hash or type provided, redirecting to error');
-  redirect('/auth/error?error=missing_token_or_type');
+  redirect('/auth/error');
 }
