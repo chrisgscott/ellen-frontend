@@ -18,8 +18,13 @@ export async function GET(request: NextRequest) {
     });
     
     if (!error) {
-      // redirect user to specified redirect URL or home
-      redirect(next);
+      // For invites, redirect to password setup first
+      if (type === 'invite') {
+        redirect('/auth/set-password');
+      } else {
+        // Regular email confirmation - redirect to specified URL or home
+        redirect(next);
+      }
     }
   }
 
