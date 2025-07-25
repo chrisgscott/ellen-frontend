@@ -17,15 +17,26 @@ export default function SetPasswordPage() {
   const supabase = createClient();
 
   useEffect(() => {
-    // Check if user is already authenticated
-    const checkUser = async () => {
+    const handleAuthFlow = async () => {
+      // Handle auth tokens from URL hash (invite callback)
+      const hash = window.location.hash;
+      if (hash) {
+        const { error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Auth error:', error);
+          setError('Invalid invitation link');
+          return;
+        }
+      }
+      
+      // Check if user is already authenticated
       const { data: { user } } = await supabase.auth.getUser();
       if (user && !user.user_metadata?.invite_pending) {
         // User is already set up, redirect to home
         router.push('/home');
       }
     };
-    checkUser();
+    handleAuthFlow();
   }, [router, supabase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
