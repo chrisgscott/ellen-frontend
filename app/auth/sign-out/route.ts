@@ -13,5 +13,9 @@ export async function POST(request: NextRequest) {
   }
 
   // Redirect to login page after successful sign out
-  return NextResponse.redirect(new URL('/auth/login', request.url));
+  const origin = process.env.NODE_ENV === 'production' 
+    ? 'https://meetellen.co' 
+    : request.headers.get('origin') || 'http://localhost:3000';
+  
+  return NextResponse.redirect(new URL('/auth/login', origin));
 }
