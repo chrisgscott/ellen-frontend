@@ -32,6 +32,18 @@ export default function HomePage() {
   useEffect(() => {
     const checkAuthAndFetchData = async () => {
       const supabase = createClient();
+      
+      // Check if this is an invite flow (has token and type=invite in URL)
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      const type = urlParams.get('type');
+      
+      if (token && type === 'invite') {
+        // This is an invite link, redirect to password setup
+        router.push(`/auth/set-password?${urlParams.toString()}`);
+        return;
+      }
+      
       const { data: { user } } = await supabase.auth.getUser();
       
       // If no user, redirect to login (backup for middleware)
