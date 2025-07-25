@@ -21,14 +21,19 @@ import { SessionLibrary } from './session-library';
 import Image from 'next/image';
 
 export function ThinSidebar() {
+  // If auth status not determined yet or user not authenticated, render nothing
+  // Prevents sidebar from flashing for unauthenticated visitors
+
   const pathname = usePathname();
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
     const fetchUserRole = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        setIsAuthenticated(true);
         const { data: profile } = await supabase
           .from('profiles')
           .select('role')
@@ -37,6 +42,8 @@ export function ThinSidebar() {
         if (profile) {
           setUserRole(profile.role);
         }
+      } else {
+        setIsAuthenticated(false);
       }
     };
     fetchUserRole();
@@ -48,6 +55,13 @@ export function ThinSidebar() {
     { icon: Newspaper, name: 'News', href: '/home/news' },
     { icon: Folders, name: 'Spaces', href: '/home/spaces' },
   ];
+
+  if (isAuthenticated === false) {
+    return null;
+  }
+  if (isAuthenticated === null) {
+    return null; // optionally a spinner
+  }
 
   return (
     <div className="flex flex-col h-screen w-14 bg-background border-r border-border">
