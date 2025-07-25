@@ -42,9 +42,7 @@ export function MagicLinkForm() {
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm`,
-        },
+        // No emailRedirectTo needed - magic links go to Site URL with tokens in hash
       });
 
       if (error) {
