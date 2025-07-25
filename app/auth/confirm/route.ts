@@ -9,6 +9,8 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get("type") as EmailOtpType | null;
   // const next = searchParams.get("next") ?? "/"; // Reserved for future use
 
+  console.log('Auth confirm route hit:', { token_hash: token_hash?.substring(0, 10) + '...', type });
+
   if (token_hash && type) {
     const supabase = await createClient();
 
@@ -16,6 +18,8 @@ export async function GET(request: NextRequest) {
       type,
       token_hash,
     });
+    
+    console.log('OTP verification result:', { error: error?.message, userEmail: data.user?.email, type });
     
     if (!error) {
       // Check if this is an invite (user needs to set password)
@@ -36,6 +40,10 @@ export async function GET(request: NextRequest) {
       // redirect the user to an error page with some instructions
       redirect(`/auth/error?error=${error?.message}`);
     }
+  } else {
+    // Missing token_hash or type - redirect to login
+    console.log('Missing token_hash or type, redirecting to login');
+    redirect('/auth/login');
   }
 
   // redirect the user to an error page with some instructions
