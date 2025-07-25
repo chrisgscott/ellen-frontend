@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { createNewSession } from '@/app/(perplexity-layout)/home/chat/hooks/useSessionManagement';
+import { createNewSession } from '@/app/home/chat/hooks/useSessionManagement';
 
 import { Button } from '@/components/ui/button';
 import { MessageSquare } from 'lucide-react';

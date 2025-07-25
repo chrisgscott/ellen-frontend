@@ -60,7 +60,9 @@ export async function GET(request: NextRequest) {
       lists = [];
     } else {
       // When getting all materials, extract the list names
-      lists = material.materials_list_items?.map((item: { materials_lists?: { name: string } }) => item.materials_lists?.name).filter(Boolean) || [];
+      lists = (material.materials_list_items
+        ?.map(item => (item.materials_lists && typeof item.materials_lists === 'object' && 'name' in item.materials_lists ? item.materials_lists.name : undefined))
+        .filter(Boolean) as string[]) || [];
     }
     
     return {

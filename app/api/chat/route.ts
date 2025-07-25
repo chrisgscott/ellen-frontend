@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import OpenAI from 'openai';
 import { extractMaterials } from '../../../lib/materials';
-import { Thread, Source, Material } from '@/app/(perplexity-layout)/home/chat/types';
+import { Thread, Source, Material } from '@/app/home/chat/types';
 import { getAllToolSchemas, getToolByName } from '@/lib/tools/registry';
 
 // Request deduplication cache

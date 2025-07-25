@@ -1,43 +1,39 @@
-import type { Metadata } from "next";
-import { Outfit } from "next/font/google";
-import { ThemeProvider } from "next-themes";
-import { QueryProvider } from "@/components/providers/query-provider";
+import type { Metadata } from 'next';
 import "./globals.css";
-
-const defaultUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : "http://localhost:3000";
-
-export const metadata: Metadata = {
-  metadataBase: new URL(defaultUrl),
-  title: "Next.js and Supabase Starter Kit",
-  description: "The fastest way to build apps with Next.js and Supabase",
-};
+import { Outfit } from "next/font/google";
 
 const outfit = Outfit({
   subsets: ["latin"],
   variable: "--font-outfit",
-  weight: ['300', '400', '500', '600', '700'],
+  display: "swap",
 });
+import { ThinSidebar } from "@/components/thin-sidebar";
+import { QueryProvider } from "@/components/query-provider";
+import { Toaster } from "@/components/ui/toaster";
+
+export const metadata: Metadata = {
+  title: 'Ellen | AI Critical Materials Analyst',
+  description: 'AI-powered critical materials analysis and insights.',
+  icons: {
+    icon: '/images/ellen-logo.svg',
+  },
+};
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${outfit.className} antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <QueryProvider>
+    <html lang="en">
+      <body className={`flex h-screen bg-background font-sans ${outfit.variable}`}>
+        <QueryProvider>
+          <ThinSidebar />
+          <div className="flex-1 overflow-auto">
             {children}
-          </QueryProvider>
-        </ThemeProvider>
+          </div>
+        </QueryProvider>
+        <Toaster />
       </body>
     </html>
   );

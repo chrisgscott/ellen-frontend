@@ -99,11 +99,7 @@ export default function HomePage() {
           <path d="M0,600 C350,450 850,750 1200,600 L1200,800 L0,800 Z" fill="#93c5fd" opacity="0.3" />
         </svg>
       </div>
-      <div className="absolute top-4 right-4 hidden z-10">
-        <Link href="/dashboard">
-          <Button variant="outline" size="sm">Back to Original Dashboard</Button>
-        </Link>
-      </div>
+
       <div className="relative z-10 w-full max-w-3xl bg-white/70 backdrop-blur-md border border-white/40 p-12 rounded-xl text-center shadow-2xl">
         {/* Logo and Title */}
         <div className="mb-6">

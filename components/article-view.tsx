@@ -4,7 +4,7 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { NewsItem } from './newsfeed-sidebar';
 
 import { useRouter } from 'next/navigation';
-import { createNewSession } from '@/app/(perplexity-layout)/home/chat/hooks/useSessionManagement';
+import { createNewSession } from '@/app/home/chat/hooks/useSessionManagement';
 import { Button } from '@/components/ui/button';
 import ScoreIndicator from './score-indicator';
 import { ExternalLink, MessageSquare } from 'lucide-react';

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Material } from '@/app/(perplexity-layout)/home/chat/types';
+import { Material } from '@/app/home/chat/types';
 
 interface RelatedMaterialsCardProps {
   material: Material;

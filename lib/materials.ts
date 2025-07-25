@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { Material } from '@/app/(perplexity-layout)/home/chat/types';
+import { Material } from '@/app/home/chat/types';
 
 /**
  * Extract materials mentioned in text by searching the materials database
