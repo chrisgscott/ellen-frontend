@@ -20,7 +20,6 @@ export default function Page() {
         <div className="w-1/3 min-w-[320px] max-w-[400px]">
           <NewsFeedSidebar 
             apiEndpoint="/api/news"
-            maxHeight="calc(100vh - 200px)"
             className="w-full max-w-none"
           />
         </div>
