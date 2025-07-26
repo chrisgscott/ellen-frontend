@@ -1,9 +1,13 @@
 # Project Log
 
-## Snapshot (as of 2025-07-17)
-- Branding polished with a new browser title and favicon.
-- Navigation fixed: `RelatedMaterialsCard` now links to the correct research pages and opens in a new tab to preserve chat context.
-- Ready for next set of UI/UX improvements or feature development.
+## Snapshot (as of 2025-07-25)
+- Authentication system pivoted from magic links to OTP codes to solve corporate email security issues
+- Corporate email security systems were consuming one-time magic links before users could use them
+- OTP codes provide reliable authentication across all email providers including corporate domains
+- Materials with insufficient data show clean "Information Coming Soon" message with actionable feedback
+- Branding polished with consistent page titles and iconography
+
+[2025-07-25 20:55] — 🔄 PIVOTED TO OTP AUTHENTICATION: Completely replaced magic link authentication with email OTP codes to solve corporate email security issue. Corporate email systems (like @tier-tech.com) were automatically clicking magic links for security scanning, consuming the one-time links before real users could use them. OTP codes can't be "consumed" by security scanners, ensuring reliable authentication for all email providers. Updated login flow, removed magic link token processing from root page, created new OTPForm component with 2-step flow (email → 6-digit code → authenticated).
 
 [2025-07-17 13:34] — 🚨 CRITICAL SYSTEM FAILURE IDENTIFIED: Entire chat system on ui-updates branch is completely broken. Not just Ask Ellen buttons - ALL chat functionality (homepage, articles, materials, direct chat) shows blank screen until full response is ready. NO real-time streaming whatsoever. This is a system-wide streaming failure that needs immediate attention.
 
