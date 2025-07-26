@@ -30,10 +30,29 @@ export function OTPForm() {
       const { data: { user } } = await supabase.auth.getUser();
       let shouldCreateUser = true;
       
-      // For invited users, we need to use shouldCreateUser: true but handle the signup disabled error
-      // This is because invited users exist but aren't fully confirmed yet
+      // Check if user was invited using our API
       if (!user) {
-        shouldCreateUser = true;
+        try {
+          const inviteResponse = await fetch('/api/auth/check-invite', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          });
+          
+          const inviteData = await inviteResponse.json();
+          
+          if (!inviteData.invited) {
+            setError('This email address has not been invited. Please contact an administrator for access.');
+            return;
+          }
+          
+          // User was invited, proceed with OTP
+          shouldCreateUser = true;
+        } catch (err) {
+          console.error('Error checking invite status:', err);
+          // Continue with normal flow if API fails
+          shouldCreateUser = true;
+        }
       }
       
       const { error } = await supabase.auth.signInWithOtp({
@@ -47,7 +66,7 @@ export function OTPForm() {
 
       if (error) {
         if (error.message.includes('Signups not allowed') || error.message.includes('signup is disabled')) {
-          setError('If you were invited, please click the confirmation link in your invite email first, then return here to sign in.');
+          setError('There was an issue with your invite. Please contact an administrator for assistance.');
         } else {
           setError(`Authentication error: ${error.message}`);
         }
@@ -111,7 +130,7 @@ export function OTPForm() {
 
       if (error) {
         if (error.message.includes('Signups not allowed') || error.message.includes('signup is disabled')) {
-          setError('If you were invited, please click the confirmation link in your invite email first, then return here to sign in.');
+          setError('There was an issue with your invite. Please contact an administrator for assistance.');
         } else {
           setError(`Authentication error: ${error.message}`);
         }
@@ -216,6 +235,9 @@ export function OTPForm() {
               />
               <p className="text-sm text-muted-foreground text-center">
                 Enter the 6-digit code from your email
+              </p>
+              <p className="text-xs text-muted-foreground text-center">
+                Code should arrive within 5 minutes. If you don&apos;t receive it, use the &ldquo;Resend code&rdquo; button below.
               </p>
             </div>
           </CardContent>
