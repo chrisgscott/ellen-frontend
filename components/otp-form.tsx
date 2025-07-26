@@ -25,15 +25,46 @@ export function OTPForm() {
 
     try {
       const supabase = createClient();
+      
+      // Check if user exists and was invited
+      const { data: { user } } = await supabase.auth.getUser();
+      let shouldCreateUser = true;
+      
+      // If user is not currently authenticated, check if they were invited
+      if (!user) {
+        // We can't directly query auth.users from client, so we'll try both approaches
+        // First try with shouldCreateUser: false (for invited users)
+        const { error: invitedUserError } = await supabase.auth.signInWithOtp({
+          email,
+          options: {
+            shouldCreateUser: false,
+          },
+        });
+        
+        if (!invitedUserError) {
+          // Success - user was invited
+          setSuccess('Check your email for a 6-digit verification code.');
+          setStep('otp');
+          return;
+        }
+        
+        // If that failed, try with shouldCreateUser: true
+        shouldCreateUser = true;
+      }
+      
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          shouldCreateUser: true,
+          shouldCreateUser,
         },
       });
 
       if (error) {
-        setError(error.message);
+        if (error.message.includes('Signups not allowed')) {
+          setError('This email address has not been invited. Please contact an administrator for access.');
+        } else {
+          setError(error.message);
+        }
       } else {
         setSuccess('Check your email for a 6-digit verification code.');
         setStep('otp');
@@ -84,6 +115,21 @@ export function OTPForm() {
 
     try {
       const supabase = createClient();
+      
+      // Try invited user first (shouldCreateUser: false)
+      const { error: invitedUserError } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false,
+        },
+      });
+      
+      if (!invitedUserError) {
+        setSuccess('New verification code sent to your email.');
+        return;
+      }
+      
+      // If that failed, try with shouldCreateUser: true
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
@@ -92,7 +138,11 @@ export function OTPForm() {
       });
 
       if (error) {
-        setError(error.message);
+        if (error.message.includes('Signups not allowed')) {
+          setError('This email address has not been invited. Please contact an administrator for access.');
+        } else {
+          setError(error.message);
+        }
       } else {
         setSuccess('New verification code sent to your email.');
       }
