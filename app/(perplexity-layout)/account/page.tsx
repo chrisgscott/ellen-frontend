@@ -28,11 +28,11 @@ export default function AccountPage() {
   const [phone, setPhone] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
   
-  // Password change state
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordLoading, setPasswordLoading] = useState(false);
+  // Password change state - Removed since we use magic link authentication
+  // const [currentPassword, setCurrentPassword] = useState('');
+  // const [newPassword, setNewPassword] = useState('');
+  // const [confirmPassword, setConfirmPassword] = useState('');
+  // const [passwordLoading, setPasswordLoading] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -79,6 +79,8 @@ export default function AccountPage() {
     setLoading(false);
   };
 
+  // Password change function - Removed since we use magic link authentication
+  /*
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -137,6 +139,7 @@ export default function AccountPage() {
     
     setPasswordLoading(false);
   };
+  */
 
   return (
     <div className="flex justify-center items-start pt-16 h-full">
@@ -186,7 +189,8 @@ export default function AccountPage() {
         </form>
       </Card>
       
-      {/* Password Change Card */}
+      {/* Password Change Card - Hidden since we use magic link authentication */}
+      {/* 
       <Card>
         <CardHeader>
           <CardTitle>Change Password</CardTitle>
@@ -245,6 +249,7 @@ export default function AccountPage() {
           </CardFooter>
         </form>
       </Card>
+      */}
       </div>
     </div>
   );
