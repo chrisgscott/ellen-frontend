@@ -217,6 +217,12 @@ export const NewsFeedSidebar = ({
   const { data: filterOptions, isLoading: filtersLoading } = useFilterOptions();
   const [hidingItems, setHidingItems] = React.useState<Set<number>>(new Set());
 
+  // Hide items with estimated impact marked as 'minimal'
+  const visibleNewsItems = React.useMemo(
+    () => (newsItems ?? []).filter((item) => !(item.estimated_impact && item.estimated_impact.toLowerCase() === 'minimal')),
+    [newsItems]
+  );
+
   const handleHideItem = async (itemId: number) => {
     // Prevent multiple clicks
     if (hidingItems.has(itemId)) {
@@ -340,8 +346,8 @@ export const NewsFeedSidebar = ({
             Array.from({ length: 3 }).map((_, i) => (
               <NewsItemSkeleton key={i} />
             ))
-          ) : newsItems && newsItems.length > 0 ? (
-            newsItems.map((item) => (
+          ) : visibleNewsItems.length > 0 ? (
+            visibleNewsItems.map((item) => (
               <NewsItemCard 
                 key={item.id} 
                 item={item} 
@@ -362,7 +368,7 @@ export const NewsFeedSidebar = ({
       {showFooter && (
         <div className="p-4 border-t border-border bg-muted/50 shrink-0">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>{newsItems?.length || 0} articles</span>
+            <span>{visibleNewsItems.length} articles</span>
             {pathname !== '/home/news' && (
               <Link href="/home/news" className="text-primary hover:text-primary/80 transition-colors font-medium p-0 h-auto text-sm">
                 View all news
