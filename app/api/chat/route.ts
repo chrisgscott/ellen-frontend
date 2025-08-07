@@ -786,7 +786,11 @@ export async function POST(req: NextRequest): Promise<Response> {
                 - Always provide descriptive, user-friendly titles rather than generic references
                 - If multiple sources cover the same topic, consolidate them appropriately
                 
-                QUESTIONS: Generate contextual follow-up questions based on the provided context.`,
+                QUESTIONS: Generate contextual follow-up questions that a user would naturally ask Ellen based on the response. These should be questions FROM the user's perspective TO Ellen, not questions Ellen would ask the user. Examples:
+                - "What are the supply chain risks for lithium?"
+                - "How does this compare to other critical materials?"
+                - "What are the current market prices?"
+                NOT: "Are you interested in summaries?" or "Would you like more details?"`,
               },
               ...history.map(msg => ({
                 role: msg.role as 'user' | 'assistant',
