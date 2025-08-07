@@ -1,5 +1,8 @@
+"use client";
+
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const impactMap: { [key: string]: { value: number; color: string } } = {
   minimal: { value: 1, color: 'bg-sky-500' },
@@ -13,9 +16,10 @@ interface ScoreIndicatorProps {
   score: number | string;
   scoreType: 'numerical' | 'categorical';
   className?: string;
+  tooltip?: React.ReactNode;
 }
 
-const ScoreIndicator = ({ label, score, scoreType, className }: ScoreIndicatorProps) => {
+const ScoreIndicator = ({ label, score, scoreType, className, tooltip }: ScoreIndicatorProps) => {
   let displayValue = 0;
   let totalValue = 5;
   let colorClass = 'bg-muted';
@@ -34,17 +38,33 @@ const ScoreIndicator = ({ label, score, scoreType, className }: ScoreIndicatorPr
     else colorClass = 'bg-green-500';
   }
 
+  // Build the chips strip separately so the tooltip can be anchored precisely to it
+  let chips = (
+    <div className="flex items-center gap-1.5">
+      {[...Array(totalValue)].map((_, i) => (
+        <div
+          key={i}
+          className={cn('w-5 h-2 rounded-full', i < displayValue ? colorClass : 'bg-muted')}
+        />
+      ))}
+    </div>
+  );
+
+  if (tooltip) {
+    chips = (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>{chips}</TooltipTrigger>
+          <TooltipContent side="top" align="center">{tooltip}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
   return (
     <div className={cn('flex items-center justify-between', className)}>
       <span className="text-sm font-medium text-muted-foreground">{label}</span>
-      <div className="flex items-center gap-1.5">
-        {[...Array(totalValue)].map((_, i) => (
-          <div
-            key={i}
-            className={cn('w-5 h-2 rounded-full', i < displayValue ? colorClass : 'bg-muted')}
-          />
-        ))}
-      </div>
+      {chips}
     </div>
   );
 };

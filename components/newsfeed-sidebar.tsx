@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
+import ScoreIndicator from "./score-indicator";
 
 // Types for Next.js integration
 export interface NewsItem {
@@ -112,6 +113,19 @@ const NewsItemCard = ({ item, onItemClick, onHide, isHiding }: NewsItemCardProps
         <p className="text-sm text-muted-foreground line-clamp-3">
           {item.snippet}
         </p>
+
+        {/* Estimated Impact (compact) */}
+        {item.estimated_impact && (
+          <div className="mt-1">
+            <ScoreIndicator
+              label="Impact"
+              score={item.estimated_impact}
+              scoreType='categorical'
+              tooltip={item.estimated_impact}
+              className="scale-90 origin-left"
+            />
+          </div>
+        )}
         
         {/* Actions */}
         <div className="flex items-center justify-between">

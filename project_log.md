@@ -9,7 +9,13 @@
 
 [2025-08-07 16:19] — Hid News Feed sidebar items with estimated_impact set to 'minimal'. Implemented client-side filter in `components/newsfeed-sidebar.tsx` and updated footer count to reflect only visible items. Left `/api/news` unchanged to preserve full listing on the dedicated News page.
 
-[2025-07-25 20:55] — 🔄 PIVOTED TO OTP AUTHENTICATION: Completely replaced magic link authentication with email OTP codes to solve corporate email security issue. Corporate email systems (like @tier-tech.com) were automatically clicking magic links for security scanning, consuming the one-time links before real users could use them. OTP codes can't be "consumed" by security scanners, ensuring reliable authentication for all email providers. Updated login flow, removed magic link token processing from root page, created new OTPForm component with 2-step flow (email → 6-digit code → authenticated).
+[2025-08-07 16:29] — Added estimated impact indicator to News Feed item cards using `ScoreIndicator` (categorical) for consistency with `components/article-view.tsx`. Implemented in `components/newsfeed-sidebar.tsx` within `NewsItemCard` under the snippet, and imported `./score-indicator`.
+
+[2025-08-07 16:33] — Added hover tooltip for Estimated Impact. Updated `components/score-indicator.tsx` to support an optional `tooltip` prop (Radix Tooltip), and passed the estimated impact string in both `components/newsfeed-sidebar.tsx` and `components/article-view.tsx`.
+
+[2025-08-07 16:38] — Repositioned Estimated Impact tooltip to center over the chips/indicator element. Anchored `TooltipTrigger` to the chip strip and set `<TooltipContent side="top" align="center" />` in `components/score-indicator.tsx` for precise positioning.
+
+ [2025-07-25 20:55] — 🔄 PIVOTED TO OTP AUTHENTICATION: Completely replaced magic link authentication with email OTP codes to solve corporate email security issue. Corporate email systems (like @tier-tech.com) were automatically clicking magic links for security scanning, consuming the one-time links before real users could use them. OTP codes can't be "consumed" by security scanners, ensuring reliable authentication for all email providers. Updated login flow, removed magic link token processing from root page, created new OTPForm component with 2-step flow (email → 6-digit code → authenticated).
 
 [2025-07-17 13:34] — 🚨 CRITICAL SYSTEM FAILURE IDENTIFIED: Entire chat system on ui-updates branch is completely broken. Not just Ask Ellen buttons - ALL chat functionality (homepage, articles, materials, direct chat) shows blank screen until full response is ready. NO real-time streaming whatsoever. This is a system-wide streaming failure that needs immediate attention.
 

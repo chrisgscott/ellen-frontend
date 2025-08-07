@@ -83,7 +83,14 @@ export const ArticleView = ({ article }: ArticleViewProps) => {
         <div className="bg-muted/50 rounded-lg p-6 space-y-6">
                     {(article.estimated_impact || article.confidence_score > 0) && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 pb-6 border-b border-border">
-              {article.estimated_impact && <ScoreIndicator label="Estimated Impact" score={article.estimated_impact} scoreType='categorical' />}
+              {article.estimated_impact && (
+                <ScoreIndicator
+                  label="Estimated Impact"
+                  score={article.estimated_impact}
+                  scoreType='categorical'
+                  tooltip={article.estimated_impact}
+                />
+              )}
               {article.confidence_score > 0 && <ScoreIndicator label="Confidence Score" score={article.confidence_score} scoreType='numerical' />}
             </div>
           )}
