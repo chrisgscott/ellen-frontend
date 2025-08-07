@@ -18,6 +18,30 @@ function cleanHtmlText(text: string): string {
   return decoded.replace(/<[^>]*>/g, '');
 }
 
+// Normalize related_materials from DB (array, JSON string, or CSV string) to string[]
+function parseRelatedMaterials(input: unknown): string[] {
+  if (Array.isArray(input)) {
+    return (input as unknown[])
+      .map((v) => (typeof v === 'string' ? v.trim() : ''))
+      .filter((v): v is string => Boolean(v));
+  }
+  if (typeof input === 'string') {
+    try {
+      const parsed = JSON.parse(input);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((v: unknown) => (typeof v === 'string' ? v.trim() : ''))
+          .filter((v): v is string => Boolean(v));
+      }
+    } catch {}
+    return input
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
 export async function GET(request: Request) {
   try {
     const supabase = await createClient();
@@ -71,6 +95,14 @@ export async function GET(request: Request) {
       recommended_action: item.recommended_action || '',
       estimated_impact: item.estimated_impact || '',
       confidence_score: item.confidence_score || 0,
+      // Additional fields from rss_feeds used by ArticleView
+      source: item.source || '',
+      geographic_focus: item.geographic_focus || '',
+      interest_cluster: item.interest_cluster || '',
+      type: item.type || '',
+      related_materials: parseRelatedMaterials(item.related_materials as unknown),
+      analysis_version: item.analysis_version || null,
+      analysis_completed_at: item.analysis_completed_at || null,
     })) || [];
 
     return NextResponse.json(transformedNews);

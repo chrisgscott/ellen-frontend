@@ -8,6 +8,8 @@ import { createNewSession } from '@/app/(perplexity-layout)/home/chat/hooks/useS
 import { Button } from '@/components/ui/button';
 import ScoreIndicator from './score-indicator';
 import { ExternalLink, MessageSquare } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import Link from 'next/link';
 
 interface ArticleViewProps {
   article: NewsItem | null;
@@ -59,25 +61,46 @@ export const ArticleView = ({ article }: ArticleViewProps) => {
         <div className="mb-8">
           <p className="text-sm text-primary font-semibold mb-2">{article.category}</p>
           <h1 className="text-4xl font-bold text-foreground leading-tight">{article.headline}</h1>
+          {/* Meta row: chips on left, date on right */}
           <div className="flex items-center justify-between mt-4">
-            <span className="text-sm text-muted-foreground">{new Date(article.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-            <div className="flex items-center gap-2">
-              <Button asChild variant="outline" size="sm">
-                <a href={article.link} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Read Original
-                </a>
-              </Button>
-              <Button variant="default" size="sm" onClick={handleAskEllen}>
-                <MessageSquare className="w-4 h-4 mr-2" />
-                Ask ELLEN
-              </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {article.source && (
+                <Badge variant="secondary">{article.source}</Badge>
+              )}
+              {article.geographic_focus && (
+                <Badge variant="outline">{article.geographic_focus}</Badge>
+              )}
+              {article.interest_cluster && (
+                <Badge variant="outline">{article.interest_cluster}</Badge>
+              )}
+              {article.type && (
+                <Badge variant="outline">{article.type}</Badge>
+              )}
             </div>
+            <span className="text-sm text-muted-foreground">{new Date(article.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-end mt-3 gap-2">
+            <Button asChild variant="outline" size="sm">
+              <a href={article.link} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Read Original
+              </a>
+            </Button>
+            <Button variant="default" size="sm" onClick={handleAskEllen}>
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Ask ELLEN
+            </Button>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="prose prose-lg dark:prose-invert max-w-none mb-12" dangerouslySetInnerHTML={{ __html: article.snippet }} />
+        {/* Highlighted Summary */}
+        <div className="mb-8">
+          <div className="rounded-md border border-primary/20 bg-primary/5 px-4 py-3">
+            <p className="text-foreground text-base md:text-lg font-medium">{article.snippet}</p>
+          </div>
+        </div>
 
         {/* AI Analysis Section */}
         <div className="bg-muted/50 rounded-lg p-6 space-y-6">
@@ -112,9 +135,26 @@ export const ArticleView = ({ article }: ArticleViewProps) => {
               <p className="text-muted-foreground">{article.recommended_action}</p>
             </div>
           )}
+          {(article.analysis_version || article.analysis_completed_at) && (
+            <div className="pt-4 border-t border-border text-xs text-muted-foreground">
+              {`Analyzed${article.analysis_version ? ` v${article.analysis_version}` : ''}${article.analysis_completed_at ? ` on ${new Date(article.analysis_completed_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}` : ''}`}
+            </div>
+          )}
         </div>
 
-        
+        {/* Related Materials */}
+        {article.related_materials && article.related_materials.length > 0 && (
+          <div className="mt-8">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Related Materials</h3>
+            <div className="flex flex-wrap gap-2">
+              {article.related_materials.map((m) => (
+                <Link key={m} href={`/home/research/${encodeURIComponent(m)}`}>
+                  <Badge variant="outline" className="cursor-pointer hover:bg-accent">{m}</Badge>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -41,6 +41,14 @@ export interface NewsItem {
   recommended_action: string;
   estimated_impact: string;
   confidence_score: number;
+  // Optional extras from rss_feeds
+  source?: string;
+  geographic_focus?: string;
+  interest_cluster?: string;
+  type?: string;
+  related_materials?: string[];
+  analysis_version?: string | null;
+  analysis_completed_at?: string | null;
 }
 
 export interface NewsFeedSidebarProps {
