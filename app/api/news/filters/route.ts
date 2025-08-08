@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+// Helpers for consistent labeling across UI
+const toTitleCaseLabel = (value: string): string => {
+  if (!value) return '';
+  // Replace underscores with spaces, collapse whitespace, then Title Case
+  const cleaned = value.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+  return cleaned.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+};
+
 // Types for database results
 interface RegionRow {
   geographic_focus: string;
@@ -66,32 +74,13 @@ export async function GET() {
       'other': 'Other'
     };
 
-    // Create source display names (convert domain to friendly name)
-    const getSourceDisplayName = (domain: string): string => {
-      const domainMappings: Record<string, string> = {
-        'bloomberg.com': 'Bloomberg',
-        'reuters.com': 'Reuters',
-        'fastmarkets.com': 'Fastmarkets',
-        'ft.com': 'Financial Times',
-        'wsj.com': 'Wall Street Journal',
-        'investingnews.com': 'Investing News',
-        'investorintel.com': 'Investor Intel',
-        'federalregister.gov': 'Federal Register',
-        'chicagotribune.com': 'Chicago Tribune',
-        'asiafinancial.com': 'Asia Financial',
-        'discoveryalert.com.au': 'Discovery Alert',
-        'geneonline.com': 'GeneOnline',
-        'borncity.com': 'Born City',
-        'ainvest.com': 'AI Invest'
-      };
-      
-      return domainMappings[domain] || domain.replace('.com', '').replace('.gov', '').replace('.au', '').split('.')[0].toUpperCase();
-    };
+    // Source label: keep URL domain lowercase for consistency
+    const getSourceDisplayName = (domain: string): string => String(domain || '').toLowerCase();
 
     return NextResponse.json({
       regions: regions.map(value => ({
         value,
-        label: regionLabels[value as keyof typeof regionLabels] || value
+        label: regionLabels[value as keyof typeof regionLabels] || toTitleCaseLabel(String(value))
       })),
       sources: sources.map(value => ({
         value,
@@ -99,7 +88,7 @@ export async function GET() {
       })),
       clusters: clusters.map(value => ({
         value,
-        label: clusterLabels[value as keyof typeof clusterLabels] || value
+        label: clusterLabels[value as keyof typeof clusterLabels] || toTitleCaseLabel(String(value))
       }))
     });
 

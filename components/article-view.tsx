@@ -18,6 +18,14 @@ interface ArticleViewProps {
 export const ArticleView = ({ article }: ArticleViewProps) => {
   const router = useRouter();
 
+  // Consistent label formatting
+  const toTitleCaseLabel = (value?: string | null) => {
+    if (!value) return '';
+    const cleaned = value.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+    return cleaned.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+  };
+  const formatSource = (domain?: string | null) => String(domain || '').toLowerCase();
+
   const handleAskEllen = async () => {
     if (!article) return;
 
@@ -65,16 +73,16 @@ export const ArticleView = ({ article }: ArticleViewProps) => {
           <div className="flex items-center justify-between mt-4">
             <div className="flex flex-wrap items-center gap-2">
               {article.source && (
-                <Badge variant="secondary">{article.source}</Badge>
+                <Badge variant="secondary">{formatSource(article.source)}</Badge>
               )}
               {article.geographic_focus && (
-                <Badge variant="outline">{article.geographic_focus}</Badge>
+                <Badge variant="outline">{toTitleCaseLabel(article.geographic_focus)}</Badge>
               )}
               {article.interest_cluster && (
-                <Badge variant="outline">{article.interest_cluster}</Badge>
+                <Badge variant="outline">{toTitleCaseLabel(article.interest_cluster)}</Badge>
               )}
               {article.type && (
-                <Badge variant="outline">{article.type}</Badge>
+                <Badge variant="outline">{toTitleCaseLabel(article.type)}</Badge>
               )}
             </div>
             <span className="text-sm text-muted-foreground">{new Date(article.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
