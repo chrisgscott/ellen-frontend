@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Newspaper, 
   RefreshCw, 
@@ -238,6 +240,9 @@ export const NewsFeedSidebar = ({
   const { data: newsItems, isLoading, error, refetch } = useNewsData(apiEndpoint, { region, cluster });
   const { data: filterOptions, isLoading: filtersLoading } = useFilterOptions();
   const [hidingItems, setHidingItems] = React.useState<Set<number>>(new Set());
+  const [submitUrl, setSubmitUrl] = React.useState('');
+  const [submitting, setSubmitting] = React.useState(false);
+  const { toast } = useToast();
 
   // Hide items with estimated impact marked as 'minimal'
   const visibleNewsItems = React.useMemo(
@@ -284,6 +289,66 @@ export const NewsFeedSidebar = ({
 
   const handleRefresh = () => {
     refetch();
+  };
+
+  const isValidHttpUrl = (value: string) => {
+    try {
+      const u = new URL(value);
+      return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = submitUrl.trim();
+    if (!trimmed || !isValidHttpUrl(trimmed)) {
+      toast({
+        title: 'Invalid URL',
+        description: 'Please enter a valid http(s) URL.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/news/submit-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: trimmed }),
+      });
+      if (!res.ok) {
+        const data: { error?: string } | null = await res.json().catch(() => null);
+        throw new Error(data?.error || 'Submission failed');
+      }
+      // Immediately inform the user that processing may take time
+      setSubmitUrl('');
+      toast({
+        title: 'Link submitted',
+        description: "Thanks! Processing may take a few minutes.",
+      });
+
+      // Then parse the response and react if it already completed quickly
+      const data: { ok?: boolean; status?: number; message?: string } | null = await res.json().catch(() => null);
+      const completed = (data?.message || '').toLowerCase().includes('completed');
+      if (completed) {
+        refetch();
+        toast({
+          title: 'Link ingested',
+          description: 'Workflow completed and feed refreshed.',
+        });
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Please try again later.';
+      toast({
+        title: 'Submission failed',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (error) {
@@ -359,6 +424,24 @@ export const NewsFeedSidebar = ({
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      {/* Submit Link */}
+      <div className="px-4 py-4 border-b border-border bg-card">
+        <form onSubmit={handleSubmit} className="flex gap-2">
+          <Input
+            type="url"
+            placeholder="Paste article URL…"
+            value={submitUrl}
+            onChange={(e) => setSubmitUrl(e.target.value)}
+            className="flex-1"
+            disabled={submitting}
+          />
+          <Button type="submit" size="sm" disabled={submitting || !submitUrl.trim()} className="shrink-0">
+            {submitting ? 'Submitting…' : 'Submit'}
+          </Button>
+        </form>
+        <p className="mt-2 text-xs text-muted-foreground">Share an article link to include it in the feed.</p>
       </div>
 
       {/* Scrollable Feed Area */}
