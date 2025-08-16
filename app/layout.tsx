@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { QueryProvider } from "@/components/providers/query-provider";
+import FrillWidget from "@/components/providers/frill-widget";
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -34,6 +35,8 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          {/* Global feedback widget */}
+          <FrillWidget />
           <QueryProvider>
             {children}
           </QueryProvider>

@@ -10,7 +10,8 @@ import {
   Folders,
   User, 
   LogOut,
-  Shield // Added for Admin button
+  Shield, // Added for Admin button
+  Megaphone
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client'; // Added to fetch role
@@ -138,6 +139,25 @@ export function ThinSidebar() {
               <TooltipContent side="right">Admin</TooltipContent>
             </Tooltip>
           )}
+
+          {/* Announcements */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                id="ellen-announcements-button"
+                variant="ghost"
+                size="icon"
+                className="relative h-10 w-10 rounded-full"
+                type="button"
+              >
+                <Megaphone className="h-5 w-5" />
+                <span className="sr-only">Announcements</span>
+                {/* Hidden by default; toggle visibility via Frill or CSS when there are unread items */}
+                <span className="notification-dot pointer-events-none absolute top-0 right-0 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background hidden" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Announcements</TooltipContent>
+          </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>
