@@ -1,10 +1,11 @@
 {
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "export-diagrams": "node ../scripts/export-diagrams.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
@@ -67,6 +68,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@mermaid-js/mermaid-cli": "^11.9.0",
     "@types/node": "^20",
     "@types/pg": "^8.15.4",
     "@types/react": "^19",
