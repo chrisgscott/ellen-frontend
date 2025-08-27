@@ -235,7 +235,7 @@ export default function OrgTree(
           </button>
         </div>
 
-        {dotted.length > 0 && (
+        {showDotted && dotted.length > 0 && (
           <div className="ml-3 mt-1 flex flex-wrap gap-1">
             {dotted.map((t) => (
               <span key={t} className="px-1.5 py-0.5 text-[10px] border border-dashed rounded text-muted-foreground">
@@ -271,7 +271,7 @@ export default function OrgTree(
     <div ref={containerRef} className={(orientation === 'vertical' ? 'w-full flex flex-col items-center' : 'w-full flex flex-row items-start') + ' relative'}>
       {/* SVG overlay for dotted_to dashed connectors */}
       {showDotted && (
-      <svg className="absolute inset-0 -z-10" width="100%" height="100%">
+      <svg className="absolute inset-0 z-0" width="100%" height="100%">
         {lines.map((ln, i) => {
           const isKeyFocus = hoveredKey ? (ln.s === hoveredKey || ln.t === hoveredKey) : false
           const isLineFocus = hoveredLine ? (hoveredLine.s === ln.s && hoveredLine.t === ln.t) : false
