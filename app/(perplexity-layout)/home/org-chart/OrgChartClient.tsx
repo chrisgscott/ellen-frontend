@@ -26,16 +26,32 @@ export default function OrgChartClient({ roles, showGrid = true }: { roles: Role
   const pathname = usePathname()
   const selKey = params.get('role')
   const [open, setOpen] = useState<boolean>(false)
+  // Local state for roles to allow optimistic updates when saving edits
+  const [rolesState, setRolesState] = useState<Role[]>(roles)
+  useEffect(() => { setRolesState(roles) }, [roles])
+
+  // Editing state
+  const [isEditing, setIsEditing] = useState(false)
+  const [draft, setDraft] = useState<string>('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const selected = useMemo(() => {
     if (!selKey) return null
-    return roles.find(r => r.key === selKey) || null
-  }, [selKey, roles])
+    return rolesState.find(r => r.key === selKey) || null
+  }, [selKey, rolesState])
 
   // Open the sheet when a role is selected via URL
   useEffect(() => {
     setOpen(!!selKey)
-  }, [selKey])
+    // Initialize edit draft when opening on a selected role
+    if (selKey) {
+      const r = rolesState.find(x => x.key === selKey)
+      setDraft(r?.content_md ?? '')
+      setIsEditing(false)
+      setError(null)
+    }
+  }, [selKey, rolesState])
 
   const setRoleInUrl = (key?: string) => {
     const sp = new URLSearchParams(params.toString())
@@ -45,6 +61,30 @@ export default function OrgChartClient({ roles, showGrid = true }: { roles: Role
       sp.delete('role')
     }
     router.replace(`${pathname}?${sp.toString()}`)
+  }
+
+  const onSave = async () => {
+    if (!selected) return
+    setSaving(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/org-roles/update-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: selected.id, content_md: draft }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error || 'Failed to save')
+      const updated = json.role as Role
+      // Optimistically update local roles state
+      setRolesState(prev => prev.map(r => r.id === updated.id ? updated : r))
+      setIsEditing(false)
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Unknown error'
+      setError(msg)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -88,15 +128,61 @@ export default function OrgChartClient({ roles, showGrid = true }: { roles: Role
               <SheetHeader>
                 <SheetTitle className="sr-only">{selected.title || selected.short_title || 'Role details'}</SheetTitle>
               </SheetHeader>
-              <div className="prose prose-sm dark:prose-invert max-w-none">
-                {selected.content_md ? (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {selected.content_md}
-                  </ReactMarkdown>
+              {/* Header actions */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-sm font-semibold leading-5 mr-3">{selected.title}</div>
+                {!isEditing ? (
+                  <button
+                    className="px-3 py-1.5 rounded border text-sm bg-background hover:bg-accent"
+                    onClick={() => { setIsEditing(true); setDraft(selected.content_md ?? '') }}
+                  >
+                    Edit
+                  </button>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No description available yet.</p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="px-3 py-1.5 rounded border text-sm bg-background hover:bg-accent disabled:opacity-50"
+                      onClick={() => setIsEditing(false)}
+                      disabled={saving}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="px-3 py-1.5 rounded border text-sm bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                      onClick={onSave}
+                      disabled={saving}
+                    >
+                      {saving ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
                 )}
               </div>
+
+              {error && (
+                <div className="mb-2 text-sm text-red-600">{error}</div>
+              )}
+
+              {!isEditing ? (
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  {selected.content_md ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {selected.content_md}
+                    </ReactMarkdown>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No description available yet.</p>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <textarea
+                    className="w-full min-h-[50vh] p-3 border rounded text-sm font-mono"
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    spellCheck={false}
+                  />
+                  <div className="mt-2 text-xs text-muted-foreground">Markdown supported. Use Save to persist.</div>
+                </div>
+              )}
             </div>
           )}
         </SheetContent>
