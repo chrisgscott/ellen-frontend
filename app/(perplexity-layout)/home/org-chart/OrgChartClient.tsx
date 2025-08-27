@@ -20,7 +20,19 @@ interface Role {
   content_md?: string | null
 }
 
-export default function OrgChartClient({ roles, showGrid = true }: { roles: Role[]; showGrid?: boolean }) {
+export default function OrgChartClient({
+  roles,
+  showGrid = true,
+  reportsTo,
+  directReports,
+  roleTitles,
+}: {
+  roles: Role[]
+  showGrid?: boolean
+  reportsTo: Record<string, string | undefined>
+  directReports: Record<string, string[]>
+  roleTitles: Record<string, string>
+}) {
   const params = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -60,7 +72,7 @@ export default function OrgChartClient({ roles, showGrid = true }: { roles: Role
     } else {
       sp.delete('role')
     }
-    router.replace(`${pathname}?${sp.toString()}`)
+    router.replace(`${pathname}?${sp.toString()}`, { scroll: false })
   }
 
   const onSave = async () => {
@@ -86,6 +98,17 @@ export default function OrgChartClient({ roles, showGrid = true }: { roles: Role
       setSaving(false)
     }
   }
+
+  // Render a link-like control that navigates to ?role=<key>
+  const renderRoleLink = (key: string) => (
+    <button
+      type="button"
+      className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs bg-accent/40 hover:bg-accent transition"
+      onClick={(e) => { e.preventDefault(); setRoleInUrl(key) }}
+    >
+      {roleTitles[key] || key}
+    </button>
+  )
 
   return (
     <div className="flex-1 p-6 overflow-y-auto">
@@ -130,7 +153,7 @@ export default function OrgChartClient({ roles, showGrid = true }: { roles: Role
               </SheetHeader>
               {/* Header actions */}
               <div className="flex items-center justify-between mb-3">
-                <div className="text-sm font-semibold leading-5 mr-3">{selected.title}</div>
+                <div className="text-lg md:text-xl font-semibold leading-6 mr-3">{selected.title}</div>
                 {!isEditing ? (
                   <button
                     className="px-3 py-1.5 rounded border text-sm bg-background hover:bg-accent"
@@ -164,6 +187,36 @@ export default function OrgChartClient({ roles, showGrid = true }: { roles: Role
 
               {!isEditing ? (
                 <div className="prose prose-sm dark:prose-invert max-w-none">
+                  {/* Dynamic reporting relationships from org_edges */}
+                  {selected && (() => {
+                    const mgrKey = reportsTo[selected.key]
+                    const kids = directReports[selected.key] || []
+                    const showMgr = !!mgrKey
+                    const showKids = kids.length > 0
+                    if (!showMgr && !showKids) return null
+                    return (
+                      <div className="not-prose mb-4 space-y-2 text-sm">
+                        {showMgr && (
+                          <div>
+                            <span className="font-medium">Reports to: </span>
+                            <span className="inline-flex flex-wrap gap-1 ml-1 align-middle">
+                              {renderRoleLink(mgrKey as string)}
+                            </span>
+                          </div>
+                        )}
+                        {showKids && (
+                          <div>
+                            <span className="font-medium">Direct reports: </span>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {kids.map((k) => (
+                                <span key={k}>{renderRoleLink(k)}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
                   {selected.content_md ? (
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {selected.content_md}

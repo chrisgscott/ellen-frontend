@@ -85,6 +85,19 @@ export default async function OrgChartPage() {
     dottedTargetsByKey[sKey] = [...(dottedTargetsByKey[sKey] ?? []), tKey]
   }
 
+  // Build reporting maps for dynamic rendering in the details sheet
+  // reportsToByKey: role key -> manager key (or undefined)
+  // directReportsByKey: role key -> array of direct report keys
+  const reportsToByKey: Record<string, string | undefined> = {}
+  const directReportsByKey: Record<string, string[]> = {}
+  for (const e of (allEdges as Edge[] | null) ?? []) {
+    const childKey = roleIdToKey.get(e.source_id)
+    const managerKey = roleIdToKey.get(e.target_id)
+    if (!childKey || !managerKey) continue
+    reportsToByKey[childKey] = managerKey
+    directReportsByKey[managerKey] = [...(directReportsByKey[managerKey] ?? []), childKey]
+  }
+
   const buildTree = (id: string): TreeNode | null => {
     const r = rolesById.get(id)
     if (!r) return null
@@ -113,7 +126,13 @@ export default async function OrgChartPage() {
         )}
       </div>
       {/* Slide-in sheet provider (no grid) */}
-      <OrgChartClient roles={roles} showGrid={false} />
+      <OrgChartClient
+        roles={roles}
+        showGrid={false}
+        reportsTo={reportsToByKey}
+        directReports={directReportsByKey}
+        roleTitles={roleTitlesByKey}
+      />
     </div>
   )
 }
