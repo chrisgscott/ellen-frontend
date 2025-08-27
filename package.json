@@ -69,6 +69,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@mermaid-js/mermaid-cli": "^11.9.0",
+    "markmap-cli": "^0.18.12",
     "@types/node": "^20",
     "@types/pg": "^8.15.4",
     "@types/react": "^19",
