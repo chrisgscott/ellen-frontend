@@ -342,7 +342,7 @@ export default function NewsGrid() {
           {/* Right: Grid content */}
           <main>
             {isLoading || filtersLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-4 gap-4">
                 {Array.from({ length: 12 }).map((_, i) => (
                   <NewsCardSkeleton key={i} />
                 ))}
@@ -359,7 +359,7 @@ export default function NewsGrid() {
                           <span className="text-xs text-muted-foreground">{items.length} articles</span>
                         </div>
                       )}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-4 gap-4">
                         {visible.map((n) => (
                           <NewsItemCard
                             key={n.id}

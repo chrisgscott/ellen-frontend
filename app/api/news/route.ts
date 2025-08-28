@@ -52,6 +52,8 @@ export async function GET(request: Request) {
     const region = searchParams.get('region');
     const source = searchParams.get('source');
     const cluster = searchParams.get('cluster');
+    const limitParam = searchParams.get('limit');
+    const limit = limitParam ? Math.max(1, Math.min(1000, Number(limitParam))) : undefined;
 
     let query = supabase
       .from('rss_feeds')
@@ -105,6 +107,9 @@ export async function GET(request: Request) {
 
     // Add ordering after applying filters
     query = query.order('created_at', { ascending: false });
+    if (limit) {
+      query = query.limit(limit);
+    }
 
     const { data: newsItems, error } = await query;
 

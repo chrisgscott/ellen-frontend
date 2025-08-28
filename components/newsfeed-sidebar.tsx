@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import React from "react";
 import { usePathname } from 'next/navigation';
@@ -15,7 +16,6 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   Newspaper, 
   RefreshCw, 
-  ExternalLink,
   EyeOff 
 } from "lucide-react";
 import {
@@ -97,6 +97,18 @@ interface NewsItemCardProps {
   isHiding?: boolean;
 }
 
+// Helpers to format source and favicon URL (aligns with article view behavior)
+const formatSource = (domain?: string | null) => String(domain || '').toLowerCase();
+const getFaviconUrl = (source?: string, link?: string) => {
+  const src = formatSource(source);
+  let host = src;
+  try {
+    if (!host && link) host = new URL(link).hostname.toLowerCase();
+  } catch {}
+  if (!host) return null;
+  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=16`;
+};
+
 const NewsItemCard = ({ item, onItemClick, onHide, isHiding }: NewsItemCardProps) => (
   <Card className="shadow-[0_2px_8px_rgba(0,0,0,0.05)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-shadow duration-300">
     <CardContent className="p-4">
@@ -143,10 +155,18 @@ const NewsItemCard = ({ item, onItemClick, onHide, isHiding }: NewsItemCardProps
             href={item.link}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors"
           >
-            <span>Read full article</span>
-            <ExternalLink className="w-3 h-3" />
+            {getFaviconUrl(item.source, item.link) && (
+              <img
+                src={getFaviconUrl(item.source, item.link) as string}
+                alt=""
+                width={14}
+                height={14}
+                className="rounded-sm"
+              />
+            )}
+            <span>Read Original</span>
           </a>
           
           <Button

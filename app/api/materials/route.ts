@@ -5,6 +5,7 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const { searchParams } = new URL(request.url);
   const listFilter = searchParams.get('list');
+  const namesParam = searchParams.get('names'); // comma-separated material names
 
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData?.user) {
@@ -14,7 +15,25 @@ export async function GET(request: NextRequest) {
   let query;
   
   // If filtering by a specific list, join with the materials_list_items table
-  if (listFilter && listFilter !== 'all') {
+  if (namesParam) {
+    // Fetch specific materials by names with detailed fields
+    const names = namesParam
+      .split(',')
+      .map((n) => n.trim())
+      .filter(Boolean);
+
+    query = supabase
+      .from('materials')
+      .select(`
+        id,
+        material,
+        short_summary,
+        symbol,
+        material_card_color
+      `)
+      .in('material', names)
+      .order('material', { ascending: true });
+  } else if (listFilter && listFilter !== 'all') {
     query = supabase
       .from('materials')
       .select(`
@@ -50,25 +69,34 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch materials' }, { status: 500 });
   }
 
-  // Transform the data to match the expected format
-  const transformedData = data.map(material => {
-    let lists: string[] = [];
-    
-    if (listFilter && listFilter !== 'all') {
-      // When filtering by a specific list, we don't need to extract list names
-      // since we already know which list they belong to
-      lists = [];
-    } else {
-      // When getting all materials, extract the list names
-      lists = material.materials_list_items?.map((item: { materials_lists?: { name: string } }) => item.materials_lists?.name).filter(Boolean) || [];
+  // Transform output depending on query type
+  if (namesParam) {
+    // Return detailed records directly
+    return NextResponse.json(data);
+  } else {
+    // Return lightweight listing with lists
+    type MaterialRow = {
+      id: string
+      material: string
+      materials_list_items?: Array<{ materials_lists?: { name: string } }>
     }
-    
-    return {
-      id: material.id,
-      material: material.material,
-      lists
-    };
-  });
-
-  return NextResponse.json(transformedData);
+    const transformedData = (data as MaterialRow[]).map((material) => {
+      let lists: string[] = [];
+      if (listFilter && listFilter !== 'all') {
+        lists = [];
+      } else {
+        lists = (
+          material.materials_list_items
+            ?.map((item: { materials_lists?: { name: string } }) => item.materials_lists?.name)
+            .filter((n): n is string => Boolean(n))
+        ) || [];
+      }
+      return {
+        id: material.id,
+        material: material.material,
+        lists
+      };
+    });
+    return NextResponse.json(transformedData);
+  }
 }

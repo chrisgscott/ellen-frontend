@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import React from 'react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
@@ -7,9 +8,12 @@ import { useRouter } from 'next/navigation';
 import { createNewSession } from '@/app/(perplexity-layout)/home/chat/hooks/useSessionManagement';
 import { Button } from '@/components/ui/button';
 import ScoreIndicator from './score-indicator';
-import { ExternalLink, MessageSquare } from 'lucide-react';
+import { ExternalLink, MessageSquare, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import { RelatedMaterialsCard } from '@/components/related-materials-card';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import type { Material } from '@/app/(perplexity-layout)/home/chat/types';
 
 interface ArticleViewProps {
   article: NewsItem | null;
@@ -17,6 +21,10 @@ interface ArticleViewProps {
 
 export const ArticleView = ({ article }: ArticleViewProps) => {
   const router = useRouter();
+  const scrollRef = React.useRef<HTMLDivElement | null>(null);
+  const [showMiniHeader, setShowMiniHeader] = React.useState(false);
+  const [relatedMaterials, setRelatedMaterials] = React.useState<Material[] | null>(null);
+  const [loadingMaterials, setLoadingMaterials] = React.useState(false);
 
   // Consistent label formatting
   const toTitleCaseLabel = (value?: string | null) => {
@@ -25,6 +33,55 @@ export const ArticleView = ({ article }: ArticleViewProps) => {
     return cleaned.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
   };
   const formatSource = (domain?: string | null) => String(domain || '').toLowerCase();
+  const getFaviconUrl = (domain?: string | null) => {
+    const d = formatSource(domain);
+    if (!d) return '';
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(d)}&sz=32`;
+  };
+
+  const wordCount = React.useMemo(() => {
+    if (!article) return 0;
+    const text = [article.snippet, article.assessment, article.implications, article.recommended_action]
+      .filter(Boolean)
+      .join(' ')
+      .replace(/<[^>]*>/g, ' ');
+    return text.trim().split(/\s+/).filter(Boolean).length;
+  }, [article]);
+  const readingMins = Math.max(1, Math.round(wordCount / 200));
+
+  React.useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      setShowMiniHeader(el.scrollTop > 140);
+    };
+    el.addEventListener('scroll', onScroll);
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Fetch full related materials metadata for carousel cards
+  React.useEffect(() => {
+    const loadMaterials = async () => {
+      if (!article?.related_materials || article.related_materials.length === 0) {
+        setRelatedMaterials(null);
+        return;
+      }
+      try {
+        setLoadingMaterials(true);
+        const names = article.related_materials.join(',');
+        const res = await fetch(`/api/materials?names=${encodeURIComponent(names)}`);
+        if (!res.ok) throw new Error(`Failed to load materials: ${res.status}`);
+        const data: Material[] = await res.json();
+        setRelatedMaterials(data);
+      } catch (err) {
+        console.error('Error loading related materials', err);
+        setRelatedMaterials(null);
+      } finally {
+        setLoadingMaterials(false);
+      }
+    };
+    loadMaterials();
+  }, [article?.related_materials]);
 
   const handleAskEllen = async () => {
     if (!article) return;
@@ -63,18 +120,58 @@ export const ArticleView = ({ article }: ArticleViewProps) => {
   }
 
   return (
-    <div className="flex-1 p-8 overflow-y-auto">
+    <div ref={scrollRef} className="flex-1 p-8 overflow-y-auto">
       <div className="max-w-4xl mx-auto">
+        {/* Sticky mini header */}
+        {showMiniHeader && (
+          <div className="sticky top-0 z-30 -mx-8 mb-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border">
+            <div className="px-8 py-2 flex items-center justify-between gap-3">
+              <div className="text-sm font-medium line-clamp-1">{article.headline}</div>
+              <div className="flex items-center gap-2">
+                {article.link && (
+                  <Button asChild variant="outline" size="sm">
+                    <a href={article.link} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="w-3 h-3 mr-1" /> Read Original
+                    </a>
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         {/* Header */}
         <div className="mb-8">
-          <p className="text-sm text-primary font-semibold mb-2">{article.category}</p>
+          {/* Breadcrumbs */}
+          <nav className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+            <Link href="/home/news" className="hover:text-foreground">News</Link>
+            <ChevronRight className="w-3 h-3" />
+            {article.interest_cluster ? (
+              <>
+                <Link href={`/home/news?cluster=${encodeURIComponent(article.interest_cluster)}`} className="hover:text-foreground">
+                  {toTitleCaseLabel(article.interest_cluster)}
+                </Link>
+                <ChevronRight className="w-3 h-3" />
+                <span className="text-foreground/90">Article</span>
+              </>
+            ) : (
+              <span className="text-foreground/90">Article</span>
+            )}
+          </nav>
+          {/* Source + Date pre-heading */}
+          <div className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
+            {getFaviconUrl(article.source) && (
+              <img src={getFaviconUrl(article.source)} alt="" width={14} height={14} className="rounded-sm" />
+            )}
+            <span className="lowercase">{formatSource(article.source)}</span>
+            <span>•</span>
+            <span>{new Date(article.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+          </div>
           <h1 className="text-4xl font-bold text-foreground leading-tight">{article.headline}</h1>
-          {/* Meta row: chips on left, date on right */}
-          <div className="flex items-center justify-between mt-4">
+          {/* Reading meta */}
+          <div className="mt-2 text-xs text-muted-foreground">{readingMins} min read • {wordCount.toLocaleString()} words</div>
+          {/* Meta row: chips */}
+          <div className="flex items-center mt-4">
             <div className="flex flex-wrap items-center gap-2">
-              {article.source && (
-                <Badge variant="secondary">{formatSource(article.source)}</Badge>
-              )}
               {article.geographic_focus && (
                 <Badge variant="outline">{toTitleCaseLabel(article.geographic_focus)}</Badge>
               )}
@@ -85,21 +182,22 @@ export const ArticleView = ({ article }: ArticleViewProps) => {
                 <Badge variant="outline">{toTitleCaseLabel(article.type)}</Badge>
               )}
             </div>
-            <span className="text-sm text-muted-foreground">{new Date(article.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
           </div>
 
-          {/* Actions */}
+          {/* Actions with source identity */}
           <div className="flex items-center justify-end mt-3 gap-2">
-            <Button asChild variant="outline" size="sm">
-              <a href={article.link} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Read Original
-              </a>
-            </Button>
-            <Button variant="default" size="sm" onClick={handleAskEllen}>
-              <MessageSquare className="w-4 h-4 mr-2" />
-              Ask ELLEN
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button asChild variant="outline" size="sm">
+                <a href={article.link} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Read Original
+                </a>
+              </Button>
+              <Button variant="default" size="sm" onClick={handleAskEllen}>
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Ask ELLEN
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -153,13 +251,32 @@ export const ArticleView = ({ article }: ArticleViewProps) => {
         {/* Related Materials */}
         {article.related_materials && article.related_materials.length > 0 && (
           <div className="mt-8">
-            <h3 className="text-lg font-semibold text-foreground mb-2">Related Materials</h3>
-            <div className="flex flex-wrap gap-2">
-              {article.related_materials.map((m) => (
-                <Link key={m} href={`/home/research/${encodeURIComponent(m)}`}>
-                  <Badge variant="outline" className="cursor-pointer hover:bg-accent">{m}</Badge>
-                </Link>
-              ))}
+            <h3 className="text-lg font-semibold text-foreground mb-3">Related Materials</h3>
+            <div className="relative">
+              <Carousel opts={{ align: 'start', dragFree: true }}>
+                <CarouselContent>
+                  {loadingMaterials && (
+                    <CarouselItem className="basis-auto pr-4">
+                      <div className="min-w-[240px] max-w-[280px] h-24 rounded-xl border p-4 bg-muted animate-pulse" />
+                    </CarouselItem>
+                  )}
+                  {!loadingMaterials && relatedMaterials && relatedMaterials.length > 0 &&
+                    relatedMaterials.map((mat) => (
+                      <CarouselItem key={mat.id} className="basis-auto pr-4">
+                        <RelatedMaterialsCard material={mat} />
+                      </CarouselItem>
+                    ))}
+                  {!loadingMaterials && (!relatedMaterials || relatedMaterials.length === 0) &&
+                    article.related_materials.map((m) => (
+                      <CarouselItem key={m} className="basis-auto pr-4">
+                        {/* Fallback minimal card if metadata not available */}
+                        <RelatedMaterialsCard material={{ id: m, material: m }} />
+                      </CarouselItem>
+                    ))}
+                </CarouselContent>
+                <CarouselPrevious />
+                <CarouselNext />
+              </Carousel>
             </div>
           </div>
         )}
