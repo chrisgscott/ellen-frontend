@@ -145,10 +145,10 @@ export const ArticleView = ({ article }: ArticleViewProps) => {
           <nav className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
             <Link href="/home/news" className="hover:text-foreground">News</Link>
             <ChevronRight className="w-3 h-3" />
-            {article.interest_cluster ? (
+            {article.category ? (
               <>
-                <Link href={`/home/news?cluster=${encodeURIComponent(article.interest_cluster)}`} className="hover:text-foreground">
-                  {toTitleCaseLabel(article.interest_cluster)}
+                <Link href={`/home/news?category=${encodeURIComponent(article.category)}`} className="hover:text-foreground">
+                  {toTitleCaseLabel(article.category)}
                 </Link>
                 <ChevronRight className="w-3 h-3" />
                 <span className="text-foreground/90">Article</span>
@@ -172,9 +172,14 @@ export const ArticleView = ({ article }: ArticleViewProps) => {
           {/* Meta row: chips */}
           <div className="flex items-center mt-4">
             <div className="flex flex-wrap items-center gap-2">
-              {article.geographic_focus && (
-                <Badge variant="outline">{toTitleCaseLabel(article.geographic_focus)}</Badge>
-              )}
+              {(() => {
+                const regions = (Array.isArray(article.geographic_focus_array) && article.geographic_focus_array.length > 0)
+                  ? Array.from(new Set(article.geographic_focus_array))
+                  : (article.geographic_focus ? [article.geographic_focus] : []);
+                return regions.map((r) => (
+                  <Badge key={`region-${r}`} variant="outline">{toTitleCaseLabel(r)}</Badge>
+                ));
+              })()}
               {article.interest_cluster && (
                 <Badge variant="outline">{toTitleCaseLabel(article.interest_cluster)}</Badge>
               )}

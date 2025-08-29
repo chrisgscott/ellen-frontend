@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import React from "react";
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,6 +28,7 @@ import {
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
 import ScoreIndicator from "./score-indicator";
+import { getCategoryColor } from "@/components/news/category-colors";
 
 // Types for Next.js integration
 export interface NewsItem {
@@ -42,10 +43,12 @@ export interface NewsItem {
   implications: string;
   recommended_action: string;
   estimated_impact: string;
+  estimated_impact_level?: number | null;
   confidence_score: number;
   // Optional extras from rss_feeds
   source?: string;
   geographic_focus?: string;
+  geographic_focus_array?: string[];
   interest_cluster?: string;
   type?: string;
   related_materials?: string[];
@@ -60,17 +63,6 @@ export interface NewsFeedSidebarProps {
   onItemClick?: (item: NewsItem) => void;
 }
 
-const getCategoryColor = (category: string) => {
-  const colors = {
-    Technology: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-    Environment: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-    Business: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-    Breaking: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-    Health: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-    default: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
-  };
-  return colors[category as keyof typeof colors] || colors.default;
-};
 
 const NewsItemSkeleton = () => (
   <div className="space-y-3 p-4">
@@ -115,7 +107,7 @@ const NewsItemCard = ({ item, onItemClick, onHide, isHiding }: NewsItemCardProps
       <div className="space-y-3">
         {/* Category Badge and Time */}
         <div className="flex items-center gap-2">
-          <Badge variant="secondary" className={getCategoryColor(item.category)}>
+          <Badge variant="outline" className={`${getCategoryColor(item.category)} border-transparent`}>
             {item.category}
           </Badge>
           <span className="text-xs text-muted-foreground">
@@ -255,14 +247,64 @@ export const NewsFeedSidebar = ({
 }: NewsFeedSidebarProps) => {
   const queryClient = useQueryClient();
   const pathname = usePathname();
-  const [region, setRegion] = React.useState('all');
-  const [cluster, setCluster] = React.useState('all');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // Initialize from URL so the UI reflects the query immediately on first paint
+  const [region, setRegion] = React.useState<string>(() => {
+    const r = searchParams.get('region');
+    return r ? decodeURIComponent(r).replace(/\+/g, ' ') : 'all';
+  });
+  const [cluster, setCluster] = React.useState<string>(() => {
+    const c = searchParams.get('cluster');
+    return c ? decodeURIComponent(c).replace(/\+/g, ' ') : 'all';
+  });
   const { data: newsItems, isLoading, error, refetch } = useNewsData(apiEndpoint, { region, cluster });
   const { data: filterOptions, isLoading: filtersLoading } = useFilterOptions();
   const [hidingItems, setHidingItems] = React.useState<Set<number>>(new Set());
   const [submitUrl, setSubmitUrl] = React.useState('');
-  const [submitting, setSubmitting] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
   const { toast } = useToast();
+
+  // Initialize filters from URL on mount and when URL changes (e.g., clicking chips)
+  React.useEffect(() => {
+    const rawRegion = searchParams.get('region');
+    const rawCluster = searchParams.get('cluster');
+    const urlRegion = (rawRegion ? decodeURIComponent(rawRegion).replace(/\+/g, ' ') : 'all').toString();
+    const urlCluster = (rawCluster ? decodeURIComponent(rawCluster).replace(/\+/g, ' ') : 'all').toString();
+    if (urlRegion !== region) setRegion(urlRegion);
+    if (urlCluster !== cluster) setCluster(urlCluster);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // Helper to update URL without scrolling
+  const updateUrl = React.useCallback((nextRegion: string, nextCluster: string) => {
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    if (nextRegion && nextRegion !== 'all') params.set('region', nextRegion); else params.delete('region');
+    if (nextCluster && nextCluster !== 'all') params.set('cluster', nextCluster); else params.delete('cluster');
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ''}`, { scroll: false });
+  }, [pathname, router, searchParams]);
+
+  const handleRegionChange = (value: string) => {
+    setRegion(value);
+    updateUrl(value, cluster);
+  };
+
+  const handleClusterChange = (value: string) => {
+    setCluster(value);
+    updateUrl(region, value);
+  };
+
+  // Compute friendly labels for placeholders to reflect current selection immediately
+  const regionDisplay = React.useMemo(() => {
+    if (region === 'all') return 'All Regions';
+    return region;
+  }, [region]);
+  const clusterDisplay = React.useMemo(() => {
+    if (cluster === 'all') return 'All Clusters';
+    // Title-case cluster value for display
+    return cluster.replace(/_/g, ' ').replace(/\s+/g, ' ').trim().replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+  }, [cluster]);
 
   // Hide items with estimated impact marked as 'minimal'
   const visibleNewsItems = React.useMemo(
@@ -331,7 +373,11 @@ export const NewsFeedSidebar = ({
       });
       return;
     }
-    setSubmitting(true);
+    // Immediate acknowledgment and clear input
+    toast({ title: 'Submission received', description: 'Working on it now. This can take a few minutes.' });
+    setSubmitUrl('');
+    // Focus the input so the user can paste another URL right away
+    setTimeout(() => inputRef.current?.focus(), 0);
     try {
       const res = await fetch('/api/news/submit-link', {
         method: 'POST',
@@ -342,23 +388,33 @@ export const NewsFeedSidebar = ({
         const data: { error?: string } | null = await res.json().catch(() => null);
         throw new Error(data?.error || 'Submission failed');
       }
-      // Immediately inform the user that processing may take time
-      setSubmitUrl('');
-      toast({
-        title: 'Link submitted',
-        description: "Thanks! Processing may take a few minutes.",
-      });
+      // Start background polling for completion
 
-      // Then parse the response and react if it already completed quickly
-      const data: { ok?: boolean; status?: number; message?: string } | null = await res.json().catch(() => null);
-      const completed = (data?.message || '').toLowerCase().includes('completed');
-      if (completed) {
-        refetch();
-        toast({
-          title: 'Link ingested',
-          description: 'Workflow completed and feed refreshed.',
-        });
-      }
+      // Non-blocking background check: if API indicates immediate completion, refresh; else poll
+      (async () => {
+        const data: { ok?: boolean; status?: number; message?: string } | null = await res.json().catch(() => null);
+        const immediate = (data?.message || '').toLowerCase().includes('completed');
+        if (immediate) {
+          await refetch();
+          toast({ title: 'Analysis complete', description: 'Feed refreshed.' });
+          return;
+        }
+        // Poll for up to ~2 minutes to detect completion by URL appearance with analysis
+        const maxAttempts = 24; // 24 * 5s = 120s
+        for (let i = 0; i < maxAttempts; i++) {
+          await new Promise(r => setTimeout(r, 5000));
+          const { data: refreshed } = await refetch();
+          const found = (refreshed || []).some(n => {
+            const link = (n.link || '').trim();
+            const hasAnalysis = Boolean(n.snippet || n.assessment || n.estimated_impact);
+            return link === trimmed && hasAnalysis;
+          });
+          if (found) {
+            toast({ title: 'Analysis complete', description: 'Your article is now in the feed.' });
+            break;
+          }
+        }
+      })();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Please try again later.';
       toast({
@@ -366,8 +422,6 @@ export const NewsFeedSidebar = ({
         description: message,
         variant: 'destructive',
       });
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -416,9 +470,9 @@ export const NewsFeedSidebar = ({
       {/* Filters */}
       <div className="px-4 pb-4 border-b border-border bg-card">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <Select value={region} onValueChange={setRegion}>
+          <Select value={region} onValueChange={handleRegionChange}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="All Regions" />
+              <SelectValue placeholder={regionDisplay} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Regions</SelectItem>
@@ -427,12 +481,16 @@ export const NewsFeedSidebar = ({
                   {option.label}
                 </SelectItem>
               ))}
+              {/* Ensure current value appears even if options have not loaded yet */}
+              {!filtersLoading && region !== 'all' && !filterOptions?.regions.find(r => r.value === region) && (
+                <SelectItem value={region}>{regionDisplay}</SelectItem>
+              )}
             </SelectContent>
           </Select>
 
-          <Select value={cluster} onValueChange={setCluster}>
+          <Select value={cluster} onValueChange={handleClusterChange}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="All Clusters" />
+              <SelectValue placeholder={clusterDisplay} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Clusters</SelectItem>
@@ -441,6 +499,9 @@ export const NewsFeedSidebar = ({
                   {option.label}
                 </SelectItem>
               ))}
+              {!filtersLoading && cluster !== 'all' && !filterOptions?.clusters.find(c => c.value === cluster) && (
+                <SelectItem value={cluster}>{clusterDisplay}</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -450,15 +511,15 @@ export const NewsFeedSidebar = ({
       <div className="px-4 py-4 border-b border-border bg-card">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <Input
+            ref={inputRef}
             type="url"
             placeholder="Paste article URL…"
             value={submitUrl}
             onChange={(e) => setSubmitUrl(e.target.value)}
             className="flex-1"
-            disabled={submitting}
           />
-          <Button type="submit" size="sm" disabled={submitting || !submitUrl.trim()} className="shrink-0">
-            {submitting ? 'Submitting…' : 'Submit'}
+          <Button type="submit" size="sm" disabled={!submitUrl.trim()} className="shrink-0">
+            Submit
           </Button>
         </form>
         <p className="mt-2 text-xs text-muted-foreground">Share an article link to include it in the feed.</p>
