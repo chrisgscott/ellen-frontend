@@ -1,4 +1,5 @@
 import { NewsFeedSidebar } from "@/components/newsfeed-sidebar";
+import { Suspense } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -18,10 +19,12 @@ export default function Page() {
         
         {/* News Feed Sidebar - 1/3 width */}
         <div className="w-1/3 min-w-[320px] max-w-[400px]">
-          <NewsFeedSidebar 
-            apiEndpoint="/api/news"
-            className="w-full max-w-none"
-          />
+          <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading news…</div>}>
+            <NewsFeedSidebar 
+              apiEndpoint="/api/news"
+              className="w-full max-w-none"
+            />
+          </Suspense>
         </div>
       </div>
     </div>
