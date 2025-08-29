@@ -49,7 +49,14 @@ type PineconeHit = {
   fields: Record<string, unknown>;
 };
 
-type PineconeNamespace = 'documents' | 'materials' | 'ellen-frameworks';
+type PineconeNamespace =
+  | 'documents'
+  | 'materials'
+  | 'ellen-frameworks'
+  | 'companies'
+  | 'material_relationships'
+  | 'end_uses'
+  | 'processing_facilities';
 
 // Tool definitions are now managed by the tool registry system
 // See /lib/tools/ for individual tool implementations
@@ -58,6 +65,16 @@ type PineconeNamespace = 'documents' | 'materials' | 'ellen-frameworks';
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+// Minimal structured types for RAG loaders
+type Mine = { id: string; name: string | null; country?: string | null; region?: string | null; owner?: string | null; status?: string | null };
+type Facility = { id: string; name: string | null; country?: string | null; region?: string | null; processes?: string | null; owner?: string | null };
+type TradeRoute = { id: string; name?: string | null; origin?: string | null; destination?: string | null; mode?: string | null };
+type Chokepoint = { id: string; name?: string | null; type?: string | null; location?: string | null; region?: string | null };
+type ExportControl = { id: string; jurisdiction?: string | null; regulation_name?: string | null; short_summary?: string | null };
+type NewsItem = { id: string; title: string | null; link?: string | null; published_at?: string | null; categories?: string[] | null };
+type EndUse = { id: string; name: string | null; category?: string | null; description?: string | null };
+type MatEndUseRow = { end_use_id: string; material?: string | null };
 
 // Helper function to calculate relevance score for web citations
 const calculateRelevance = (text: string, queryTerms: string[]): number => {
@@ -77,6 +94,19 @@ const calculateRelevance = (text: string, queryTerms: string[]): number => {
   }
   
   return score;
+};
+
+// Helper to create readable, length-capped source tags
+const toReadableTag = (prefix: string, name?: string | null, maxLen = 40): string => {
+  const base = (name || '').toString().trim();
+  if (!base) return `[${prefix}]`;
+  const cleaned = base
+    .replace(/\s+/g, ' ')
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .slice(0, maxLen)
+    .trim()
+    .replace(/\s+/g, '-');
+  return `[${prefix}: ${cleaned}]`;
 };
 
 // Helper function to classify queries for web search
@@ -157,6 +187,146 @@ const classifyQuery = (query: string): QueryClassification => {
     searchModel: null,
     searchReason: 'Query can be answered with existing knowledge base'
   };
+};
+
+// Helper: extract search terms from a freeform query
+const extractSearchTerms = (query: string): string[] => {
+  const stopWords = new Set([
+    'what','are','the','how','why','when','where','which','who',
+    'does','did','will','would','could','should','can','may','might',
+    'and','but','for','nor','yet','so','or','as','if','than',
+    'this','that','these','those','with','from','into','onto','upon',
+    'most','more','some','any','all','each','every','many','much',
+    'current','efforts','countries','materials'
+  ]);
+  return query.toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(t => t.length > 2 && !stopWords.has(t) && !/^\d+$/.test(t))
+    .slice(0, 8);
+};
+
+// Load structured context from selected DB tables for RAG
+const loadStructuredRagContext = async (
+  query: string,
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  seedMaterials: Material[]
+): Promise<{
+  mines: Mine[];
+  facilities: Facility[];
+  trade_routes: TradeRoute[];
+  chokepoints: Chokepoint[];
+  export_controls: ExportControl[];
+  news: NewsItem[];
+  end_uses: EndUse[];
+}> => {
+  const terms = extractSearchTerms(query);
+  const like = (col: string) => terms.map(t => `${col}.ilike.%${t}%`).join(',');
+
+  // Use up to first 5 material names to further focus queries
+  const materialNames = (seedMaterials || []).map(m => m.material).filter(Boolean).slice(0, 5);
+
+  const queries = [
+    // Mines
+    supabase
+      .from('mines')
+      .select('id, name, country, region, owner, status')
+      .or(terms.length ? like('name') : '')
+      .limit(6),
+    // Processing facilities
+    supabase
+      .from('processing_facilities')
+      .select('id, name, country, region, processes, owner')
+      .or(terms.length ? like('name') : '')
+      .limit(6),
+    // Trade routes
+    supabase
+      .from('trade_routes')
+      .select('id, name, origin, destination, mode')
+      .or(terms.length ? [like('name'), like('origin'), like('destination')].filter(Boolean).join(',') : '')
+      .limit(6),
+    // Chokepoints
+    supabase
+      .from('chokepoints')
+      .select('id, name, type, location, region')
+      .or(terms.length ? like('name') : '')
+      .limit(6),
+    // Export controls
+    supabase
+      .from('export_controls')
+      .select('id, jurisdiction, regulation_name, short_summary')
+      .or(terms.length ? [like('jurisdiction'), like('regulation_name')].join(',') : '')
+      .limit(6),
+    // Recent news filtered by terms or material names
+    supabase
+      .from('rss_feeds')
+      .select('id, title, link, published_at, categories')
+      .or(
+        (
+          [terms.map(t => `title.ilike.%${t}%`).join(','),
+           materialNames.map(n => `title.ilike.%${n}%`).join(',')]
+            .filter(Boolean)
+            .join(',')
+        )
+      )
+      .order('published_at', { ascending: false })
+      .limit(8),
+    // Link end-uses by materials via join table
+    (materialNames.length > 0
+      ? supabase
+          .from('materials_end_uses')
+          .select('end_use_id, material')
+          .in('material', materialNames)
+          .limit(50)
+      : Promise.resolve({ data: [] as MatEndUseRow[], error: null } as { data: MatEndUseRow[]; error: null })
+    ),
+    // End-uses by terms
+    (terms.length > 0
+      ? supabase
+          .from('end_uses')
+          .select('id, name, category, description')
+          .or([like('name'), like('description')].join(','))
+          .limit(8)
+      : Promise.resolve({ data: [] as EndUse[] , error: null } as { data: EndUse[]; error: null })
+    )
+  ];
+
+  try {
+    const [minesRes, facRes, routesRes, chokeRes, controlsRes, newsRes, matEndUsesRes, endUsesTermRes] = await Promise.all(queries);
+
+    // Fetch end-uses by collected IDs from materials_end_uses
+    let endUsesByMaterials: EndUse[] = [];
+    const idRows = (matEndUsesRes as { data: MatEndUseRow[] | null })?.data || [];
+    const endUseIds = Array.from(new Set((idRows || []).map(r => r.end_use_id))).slice(0, 25);
+    if (endUseIds.length > 0) {
+      const { data: endUsesData } = await supabase
+        .from('end_uses')
+        .select('id, name, category, description')
+        .in('id', endUseIds)
+        .limit(25);
+      endUsesByMaterials = (endUsesData as EndUse[]) || [];
+    }
+
+    // Merge with term-based results and dedupe by id
+    const endUsesByTerms = ((endUsesTermRes as { data: EndUse[] | null })?.data) || [];
+    const endUseMap = new Map<string, EndUse>();
+    [...endUsesByMaterials, ...endUsesByTerms].forEach(eu => {
+      if (eu && eu.id && !endUseMap.has(eu.id)) endUseMap.set(eu.id, eu);
+    });
+    const end_uses = Array.from(endUseMap.values()).slice(0, 10);
+    return {
+      mines: (minesRes.data as Mine[]) || [],
+      facilities: (facRes.data as Facility[]) || [],
+      trade_routes: (routesRes.data as TradeRoute[]) || [],
+      chokepoints: (chokeRes.data as Chokepoint[]) || [],
+      export_controls: (controlsRes.data as ExportControl[]) || [],
+      news: (newsRes.data as NewsItem[]) || [],
+      end_uses,
+    };
+  } catch (e) {
+    console.error('🗄️ RAG: Structured DB context load error:', e);
+    return { mines: [], facilities: [], trade_routes: [], chokepoints: [], export_controls: [], news: [], end_uses: [] };
+  }
 };
 
 // Multi-namespace Pinecone search function
@@ -340,24 +510,31 @@ const searchSupabaseMaterials = async (query: string, supabase: Awaited<ReturnTy
 // Search multiple Pinecone namespaces and combine results
 const searchMultipleNamespaces = async (query: string): Promise<PineconeDocument[]> => {
   try {
-    console.log('🔍 RAG: Searching Pinecone namespaces:', ['documents', 'materials', 'ellen-frameworks']);
-    
-    // Search all three namespaces in parallel
-    const [documentsResults, materialsResults, frameworksResults] = await Promise.all([
-      searchPineconeNamespace(query, 'documents'),
-      searchPineconeNamespace(query, 'materials'),
-      searchPineconeNamespace(query, 'ellen-frameworks')
-    ]);
+    const namespaces: PineconeNamespace[] = [
+      'documents',
+      'materials',
+      'ellen-frameworks',
+      'companies',
+      'material_relationships',
+      'end_uses',
+      'processing_facilities'
+    ];
+    console.log('🔍 RAG: Searching Pinecone namespaces:', namespaces);
 
-    // Combine and sort by relevance score
-    const allResults = [...documentsResults, ...materialsResults, ...frameworksResults]
+    // Search all namespaces in parallel
+    const results = await Promise.all(namespaces.map(ns => searchPineconeNamespace(query, ns)));
+
+    // Map results back to namespaces for logging
+    const byNs: Record<string, number> = {};
+    namespaces.forEach((ns, i) => { byNs[ns] = results[i].length; });
+
+    // Combine and sort by relevance score; keep more to allow prompt sections
+    const allResults = results.flat()
       .sort((a, b) => (b.score || 0) - (a.score || 0))
-      .slice(0, 8); // Increased to 8 results to accommodate frameworks
+      .slice(0, 12);
 
-    console.log('🔍 RAG: Retrieved context:', {
-      documentsCount: documentsResults.length,
-      materialsCount: materialsResults.length,
-      frameworksCount: frameworksResults.length,
+    console.log('🔍 RAG: Retrieved context (by namespace):', {
+      ...byNs,
       totalResults: allResults.length,
       topScores: allResults.slice(0, 3).map(r => r.score)
     });
@@ -490,18 +667,12 @@ export async function POST(req: NextRequest): Promise<Response> {
 
           // Format history for OpenAI
           const history = historyData.flatMap((thread: Thread & { user_message_content?: string; assistant_message_content?: string }) => {
-            const messages = [];
+            const messages = [] as Array<{ role: 'user' | 'assistant'; content: string }>;
             if (thread.user_message_content) {
-              messages.push({
-                role: 'user',
-                content: thread.user_message_content,
-              });
+              messages.push({ role: 'user', content: thread.user_message_content });
             }
             if (thread.assistant_message_content) {
-              messages.push({
-                role: 'assistant',
-                content: thread.assistant_message_content,
-              });
+              messages.push({ role: 'assistant', content: thread.assistant_message_content });
             }
             return messages;
           });
@@ -548,19 +719,74 @@ export async function POST(req: NextRequest): Promise<Response> {
             searchMultipleNamespaces(message),
             searchSupabaseMaterials(message, supabase)
           ]);
+
+          // Load additional structured context from selected tables
+          const structuredContext = await loadStructuredRagContext(message, supabase, supabaseMaterials);
           
           // Build context prompt from retrieved documents and materials
           let contextPrompt = '';
           
-          if (pineconeContext.length > 0 || supabaseMaterials.length > 0) {
+          if (pineconeContext.length > 0 || supabaseMaterials.length > 0 ||
+              structuredContext.mines.length > 0 || structuredContext.facilities.length > 0 ||
+              structuredContext.trade_routes.length > 0 || structuredContext.chokepoints.length > 0 ||
+              structuredContext.export_controls.length > 0 || structuredContext.news.length > 0) {
             contextPrompt += '\n\n--- RELEVANT CONTEXT ---';
             
             // Pinecone document sources
             const documentsContext = pineconeContext.filter(doc => doc.metadata.namespace === 'documents');
             if (documentsContext.length > 0) {
               contextPrompt += '\n\nDocument Sources:';
-              documentsContext.forEach((doc, idx) => {
-                contextPrompt += `\n[DOC-${idx + 1}] ${doc.metadata.title || doc.metadata.filename || 'Document'}:\n${doc.text}`;
+              documentsContext.forEach((doc) => {
+                contextPrompt += `\n${toReadableTag('Document', doc.metadata.title || doc.metadata.filename)}\n${doc.text}`;
+              });
+            }
+            // Mines
+            if (structuredContext.mines.length > 0) {
+              contextPrompt += '\n\nMines (Structured):';
+              structuredContext.mines.slice(0, 6).forEach((mine) => {
+                contextPrompt += `\n${toReadableTag('Database Mine', mine.name || 'Mine')} — ${mine.country || ''} ${mine.region ? '(' + mine.region + ')' : ''}${mine.owner ? ', Owner: ' + mine.owner : ''}${mine.status ? ', Status: ' + mine.status : ''}`;
+              });
+            }
+            // Processing Facilities
+            if (structuredContext.facilities.length > 0) {
+              contextPrompt += '\n\nProcessing Facilities (Structured):';
+              structuredContext.facilities.slice(0, 6).forEach((f) => {
+                contextPrompt += `\n${toReadableTag('Database Facility', f.name || 'Facility')} — ${f.country || ''} ${f.region ? '(' + f.region + ')' : ''}${f.owner ? ', Owner: ' + f.owner : ''}${f.processes ? '\nProcesses: ' + f.processes : ''}`;
+              });
+            }
+            // Trade Routes
+            if (structuredContext.trade_routes.length > 0) {
+              contextPrompt += '\n\nTrade Routes (Structured):';
+              structuredContext.trade_routes.slice(0, 6).forEach((r) => {
+                contextPrompt += `\n${toReadableTag('Database Route', r.name || 'Route')} — ${r.origin || ''} → ${r.destination || ''}${r.mode ? ' (' + r.mode + ')' : ''}`;
+              });
+            }
+            // Chokepoints
+            if (structuredContext.chokepoints.length > 0) {
+              contextPrompt += '\n\nChokepoints (Structured):';
+              structuredContext.chokepoints.slice(0, 6).forEach((c) => {
+                contextPrompt += `\n${toReadableTag('Database Chokepoint', c.name || 'Chokepoint')} — ${c.type || ''}${c.location ? ', Location: ' + c.location : ''}${c.region ? ' (' + c.region + ')' : ''}`;
+              });
+            }
+            // Export Controls
+            if (structuredContext.export_controls.length > 0) {
+              contextPrompt += '\n\nExport Controls (Structured):';
+              structuredContext.export_controls.slice(0, 6).forEach((ec) => {
+                contextPrompt += `\n${toReadableTag('Database Export Control', ec.regulation_name || ec.jurisdiction || 'Regulation')} — ${ec.jurisdiction || ''}${ec.regulation_name ? ' — ' + ec.regulation_name : ''}${ec.short_summary ? '\nSummary: ' + ec.short_summary : ''}`;
+              });
+            }
+            // Recent News
+            if (structuredContext.news.length > 0) {
+              contextPrompt += '\n\nRecent News (Structured):';
+              structuredContext.news.slice(0, 6).forEach((n) => {
+                contextPrompt += `\n${toReadableTag('Database News', n.title || 'Article')}${n.published_at ? ' — ' + n.published_at : ''}${n.link ? '\n' + n.link : ''}`;
+              });
+            }
+            // End Uses
+            if (structuredContext.end_uses.length > 0) {
+              contextPrompt += '\n\nEnd Uses (Structured):';
+              structuredContext.end_uses.slice(0, 8).forEach((eu) => {
+                contextPrompt += `\n${toReadableTag('Database End Use', eu.name || 'End Use')}${eu.category ? ' — ' + eu.category : ''}${eu.description ? '\n' + eu.description : ''}`;
               });
             }
             
@@ -568,8 +794,8 @@ export async function POST(req: NextRequest): Promise<Response> {
             const pineconeMatContext = pineconeContext.filter(doc => doc.metadata.namespace === 'materials');
             if (pineconeMatContext.length > 0) {
               contextPrompt += '\n\nMaterials Vector Database:';
-              pineconeMatContext.forEach((doc, idx) => {
-                contextPrompt += `\n[VEC-${idx + 1}] ${doc.metadata.material_name || 'Material'}:\n${doc.text}`;
+              pineconeMatContext.forEach((doc) => {
+                contextPrompt += `\n${toReadableTag('Vector Materials', doc.metadata.material_name || doc.metadata.title || 'Material')}\n${doc.text}`;
               });
             }
             
@@ -577,16 +803,48 @@ export async function POST(req: NextRequest): Promise<Response> {
             const frameworksContext = pineconeContext.filter(doc => doc.metadata.namespace === 'ellen-frameworks');
             if (frameworksContext.length > 0) {
               contextPrompt += '\n\nStrategic Analysis Frameworks:';
-              frameworksContext.forEach((doc, idx) => {
-                contextPrompt += `\n[FWK-${idx + 1}] ${doc.metadata.framework_name || doc.metadata.title || 'Framework'}:\n${doc.text}`;
+              frameworksContext.forEach((doc) => {
+                contextPrompt += `\n${toReadableTag('Framework', doc.metadata.framework_name || doc.metadata.title || 'Framework')}\n${doc.text}`;
+              });
+            }
+            // Companies (vector)
+            const companiesContext = pineconeContext.filter(doc => doc.metadata.namespace === 'companies');
+            if (companiesContext.length > 0) {
+              contextPrompt += '\n\nCompanies (Vector DB):';
+              companiesContext.slice(0, 5).forEach((doc) => {
+                contextPrompt += `\n${toReadableTag('Vector Companies', doc.metadata.title || doc.metadata.filename || 'Company')}\n${doc.text}`;
+              });
+            }
+            // Material Relationships (vector)
+            const relationshipsContext = pineconeContext.filter(doc => doc.metadata.namespace === 'material_relationships');
+            if (relationshipsContext.length > 0) {
+              contextPrompt += '\n\nMaterial Relationships (Vector DB):';
+              relationshipsContext.slice(0, 5).forEach((doc) => {
+                contextPrompt += `\n${toReadableTag('Vector Relationships', doc.metadata.title || 'Relationship')}\n${doc.text}`;
+              });
+            }
+            // End Uses (vector)
+            const endUsesVecContext = pineconeContext.filter(doc => doc.metadata.namespace === 'end_uses');
+            if (endUsesVecContext.length > 0) {
+              contextPrompt += '\n\nEnd Uses (Vector DB):';
+              endUsesVecContext.slice(0, 6).forEach((doc) => {
+                contextPrompt += `\n${toReadableTag('Vector End Uses', doc.metadata.title || doc.metadata.material_name || 'End Use')}\n${doc.text}`;
+              });
+            }
+            // Processing Facilities (vector)
+            const procFacilitiesVecContext = pineconeContext.filter(doc => doc.metadata.namespace === 'processing_facilities');
+            if (procFacilitiesVecContext.length > 0) {
+              contextPrompt += '\n\nProcessing Facilities (Vector DB):';
+              procFacilitiesVecContext.slice(0, 5).forEach((doc) => {
+                contextPrompt += `\n${toReadableTag('Vector Processing Facilities', doc.metadata.title || doc.metadata.filename || 'Facility')}\n${doc.text}`;
               });
             }
             
             // Supabase structured materials data
             if (supabaseMaterials.length > 0) {
               contextPrompt += '\n\nMaterials Database (Structured):';
-              supabaseMaterials.forEach((material, idx) => {
-                contextPrompt += `\n[DB-${idx + 1}] ${material.material}:`;
+              supabaseMaterials.forEach((material) => {
+                contextPrompt += `\n${toReadableTag('Database Material', material.material || 'Material')}`;
                 
                 // Core identification
                 if (material.symbol) {

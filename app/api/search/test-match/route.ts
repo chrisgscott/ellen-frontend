@@ -33,7 +33,8 @@ export async function GET() {
 
     const rows = (Array.isArray(data) ? data : []) as unknown[];
     return NextResponse.json({ ok: true, count: rows.length });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
