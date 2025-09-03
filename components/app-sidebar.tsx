@@ -78,6 +78,14 @@ export async function AppSidebar(
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <a href="/home/engagements">
+                <LayoutDashboard className="mr-2 size-4 text-primary" />
+                Engagements
+              </a>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
 
         </SidebarMenu>
         <SidebarSeparator className="my-2" />
