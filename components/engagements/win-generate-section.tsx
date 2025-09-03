@@ -2,15 +2,27 @@
 import React, { useMemo, useRef, useState } from "react";
 
 type Suggestion = {
-  text: string;
-  sources?: string[];
+  win_if: string;
+  wiift: string;
+  wiifm: string;
+  sources?: string[]; // rendered as ref strings
 };
 
-type ContextEvent = { type: "context"; data: { sources: string[] } };
-type SuggestionEvent = { type: "suggestion"; data: { text: string; sources?: string[] } };
-type DoneEvent = { type: "done" };
-type ErrorEvent = { type: "error"; data?: string };
-type EventPayload = ContextEvent | SuggestionEvent | DoneEvent | ErrorEvent;
+// We receive SSE with an event name and a plain data payload object.
+type ContextData = {
+  id: string;
+  title?: string;
+  topic?: string;
+  objectives?: string[];
+  participants?: Array<{ name: string; role_title?: string; organization?: string; is_internal?: boolean }>;
+  sources?: Array<{ tag?: string; ref?: string }>;
+};
+type SuggestionData = {
+  win_if?: string;
+  wiift?: string;
+  wiifm?: string;
+  sources?: Array<{ tag?: string; ref?: string }>;
+};
 
 export function WinGenerateSection({ engagementId }: { engagementId: string }) {
   const [running, setRunning] = useState(false);
@@ -72,30 +84,43 @@ export function WinGenerateSection({ engagementId }: { engagementId: string }) {
         const { value, done } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-        // Parse SSE events
+        // Parse SSE events: expect lines like `event: suggestion` and `data: { ... }`
         let idx;
         while ((idx = buffer.indexOf("\n\n")) !== -1) {
           const rawEvent = buffer.slice(0, idx);
           buffer = buffer.slice(idx + 2);
           const lines = rawEvent.split("\n");
+          const eventLine = lines.find((l) => l.startsWith("event:"));
           const dataLine = lines.find((l) => l.startsWith("data:"));
           if (!dataLine) continue;
           try {
-            const payload: EventPayload = JSON.parse(dataLine.replace(/^data:\s?/, ""));
-            if (payload.type === "context") {
-              const sources: string[] = Array.isArray(payload.data?.sources)
-                ? payload.data.sources
+            const eventName = eventLine ? eventLine.replace(/^event:\s?/, "").trim() : "message";
+            const parsed = JSON.parse(dataLine.replace(/^data:\s?/, ""));
+
+            if (eventName === "context") {
+              const data: ContextData = parsed;
+              const sources: string[] = Array.isArray(data.sources)
+                ? data.sources.map((s) => (s?.ref ? String(s.ref) : "")).filter(Boolean)
                 : [];
+              // show only source refs
               setContext((prev) => [...prev, ...sources]);
-            } else if (payload.type === "suggestion") {
-              const text: string = payload.data?.text || "";
-              const sources: string[] = Array.isArray(payload.data?.sources)
-                ? payload.data.sources
+            } else if (eventName === "suggestion") {
+              const data: SuggestionData = parsed;
+              const sources: string[] = Array.isArray(data.sources)
+                ? data.sources.map((s) => (s?.ref ? String(s.ref) : "")).filter(Boolean)
                 : [];
-              setSuggestions((prev) => [...prev, { text, sources }]);
-            } else if (payload.type === "error") {
-              setError(String(payload.data ?? "Unknown error"));
-            } else if (payload.type === "done") {
+              setSuggestions((prev) => [
+                ...prev,
+                {
+                  win_if: data.win_if || "",
+                  wiift: data.wiift || "",
+                  wiifm: data.wiifm || "",
+                  sources,
+                },
+              ]);
+            } else if (eventName === "error") {
+              setError(String(parsed?.message || parsed?.error || "Unknown error"));
+            } else if (eventName === "done") {
               // stop after done
               if (ctrl.current) ctrl.current.abort();
             }
@@ -181,7 +206,9 @@ export function WinGenerateSection({ engagementId }: { engagementId: string }) {
         <div className="space-y-2">
           {suggestions.map((s, i) => (
             <div key={i} className="border rounded p-3">
-              <div className="text-sm whitespace-pre-wrap">{s.text}</div>
+              <div className="text-sm"><span className="font-medium">WIN IF:</span> {s.win_if}</div>
+              <div className="text-sm"><span className="font-medium">WIIFT:</span> {s.wiift}</div>
+              <div className="text-sm"><span className="font-medium">WIIFM:</span> {s.wiifm}</div>
               {s.sources && s.sources.length > 0 && (
                 <div className="text-xs text-muted-foreground mt-1">{s.sources.join("  •  ")}</div>
               )}
