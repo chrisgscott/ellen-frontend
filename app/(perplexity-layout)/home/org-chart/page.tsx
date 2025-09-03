@@ -4,7 +4,7 @@ import OrgTree from './OrgTree'
 
 export const dynamic = 'force-dynamic'
 
-type Role = { id: string; key: string; title: string; short_title?: string | null; content_md?: string | null }
+type Role = { id: string; key: string; title: string; short_title?: string | null; content_md?: string | null; incumbent_name?: string | null }
 type Edge = { source_id: string; target_id: string }
 
 type TreeNode = {
@@ -12,6 +12,7 @@ type TreeNode = {
   key: string
   title: string
   short_title?: string | null
+  incumbent_name?: string | null
   children: TreeNode[]
 }
 
@@ -50,7 +51,7 @@ export default async function OrgChartPage() {
       .eq('edge_type', 'dotted_to'),
     supabase
       .from('org_roles')
-      .select('id,key,title,short_title,content_md')
+      .select('id,key,title,short_title,content_md,incumbent_name')
   ])
 
   if (edgesErr || dottedErr || rolesErr) {
@@ -106,7 +107,7 @@ export default async function OrgChartPage() {
       .filter(Boolean) as TreeNode[]
     // Sort children by title for stable layout
     kids.sort((a, b) => a.title.localeCompare(b.title))
-    return { id: r.id, key: r.key, title: r.title, short_title: r.short_title ?? undefined, children: kids }
+    return { id: r.id, key: r.key, title: r.title, short_title: r.short_title ?? undefined, incumbent_name: r.incumbent_name ?? undefined, children: kids }
   }
 
   const root = buildTree(ceo.id)

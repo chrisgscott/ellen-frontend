@@ -8,6 +8,7 @@ export type TreeNode = {
   key: string
   title: string
   short_title?: string | null
+  incumbent_name?: string | null
   children: TreeNode[]
 }
 
@@ -160,6 +161,9 @@ export default function OrgTree(
             >
               <div className="px-3 py-2 border-b">
                 <div className="text-sm font-semibold leading-5">{n.title}</div>
+                {n.incumbent_name && (
+                  <div className="text-[11px] text-muted-foreground">{n.incumbent_name}</div>
+                )}
                 {n.short_title && (
                   <div className="text-xs text-muted-foreground">{n.short_title}</div>
                 )}
@@ -223,6 +227,9 @@ export default function OrgTree(
           >
             <div className="px-3 py-2 border-b">
               <div className="text-sm font-semibold leading-5">{n.title}</div>
+              {n.incumbent_name && (
+                <div className="text-[11px] text-muted-foreground">{n.incumbent_name}</div>
+              )}
               {n.short_title && (
                 <div className="text-xs text-muted-foreground">{n.short_title}</div>
               )}

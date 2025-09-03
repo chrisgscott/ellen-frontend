@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: Request) {
   try {
-    const { id, content_md } = await req.json()
+    const { id, content_md, incumbent_name } = await req.json()
     if (!id || typeof content_md !== 'string') {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
     }
@@ -11,9 +11,9 @@ export async function POST(req: Request) {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('org_roles')
-      .update({ content_md })
+      .update({ content_md, incumbent_name })
       .eq('id', id)
-      .select('id,key,title,short_title,content_md')
+      .select('id,key,title,short_title,content_md,incumbent_name')
       .maybeSingle()
 
     if (error) {
@@ -30,3 +30,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
+

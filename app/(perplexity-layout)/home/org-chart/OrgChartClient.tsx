@@ -18,6 +18,7 @@ interface Role {
   title: string
   short_title?: string | null
   content_md?: string | null
+  incumbent_name?: string | null
 }
 
 export default function OrgChartClient({
@@ -45,6 +46,7 @@ export default function OrgChartClient({
   // Editing state
   const [isEditing, setIsEditing] = useState(false)
   const [draft, setDraft] = useState<string>('')
+  const [nameDraft, setNameDraft] = useState<string>('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -60,6 +62,7 @@ export default function OrgChartClient({
     if (selKey) {
       const r = rolesState.find(x => x.key === selKey)
       setDraft(r?.content_md ?? '')
+      setNameDraft(r?.incumbent_name ?? '')
       setIsEditing(false)
       setError(null)
     }
@@ -83,7 +86,7 @@ export default function OrgChartClient({
       const res = await fetch('/api/org-roles/update-content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: selected.id, content_md: draft }),
+        body: JSON.stringify({ id: selected.id, content_md: draft, incumbent_name: nameDraft || null }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || 'Failed to save')
@@ -127,6 +130,9 @@ export default function OrgChartClient({
                   <CardTitle className="text-base leading-5">{r.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  {r.incumbent_name && (
+                    <div className="text-xs text-muted-foreground">{r.incumbent_name}</div>
+                  )}
                   {r.short_title && (
                     <div className="text-xs text-muted-foreground">{r.short_title}</div>
                   )}
@@ -153,7 +159,16 @@ export default function OrgChartClient({
               </SheetHeader>
               {/* Header actions */}
               <div className="flex items-center justify-between mb-3">
-                <div className="text-lg md:text-xl font-semibold leading-6 mr-3">{selected.title}</div>
+                <div className="flex flex-col mr-3">
+                  <div className="text-lg md:text-xl font-semibold leading-6">{selected.title}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {selected.incumbent_name ? (
+                      <span>Named: {selected.incumbent_name}</span>
+                    ) : (
+                      <span className="italic">Unassigned</span>
+                    )}
+                  </div>
+                </div>
                 {!isEditing ? (
                   <button
                     className="px-3 py-1.5 rounded border text-sm bg-background hover:bg-accent"
@@ -227,6 +242,16 @@ export default function OrgChartClient({
                 </div>
               ) : (
                 <div>
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium mb-1">Name (optional)</label>
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded text-sm"
+                      value={nameDraft}
+                      onChange={(e) => setNameDraft(e.target.value)}
+                      placeholder="e.g., Jane Doe"
+                    />
+                  </div>
                   <textarea
                     className="w-full min-h-[50vh] p-3 border rounded text-sm font-mono"
                     value={draft}
