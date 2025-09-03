@@ -58,7 +58,8 @@ export default async function EngagementDetailPage({ params }: { params: Promise
     .order("created_at", { ascending: true });
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-6">
+      <div className="mx-auto max-w-3xl space-y-8">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">{engagement.title}</h1>
@@ -93,18 +94,19 @@ export default async function EngagementDetailPage({ params }: { params: Promise
         </div>
       </section>
 
-      <section>
-        <WinStatementsSection engagementId={id} initial={(winStatements ?? []) as WinStatement[]} />
-      </section>
+        <section>
+          <WinStatementsSection engagementId={id} initial={(winStatements ?? []) as WinStatement[]} />
+        </section>
 
-      <section>
-        <WinGenerateSection engagementId={id} />
-      </section>
+        <section>
+          <WinGenerateSection engagementId={id} />
+        </section>
 
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold">Support Package</h2>
-        <div className="text-sm text-muted-foreground">This section will display the latest generated info package (summary, sources). For now, use the API to generate: POST /api/engagements/{id}/support-package.</div>
-      </section>
+        <section className="space-y-2">
+          <h2 className="text-lg font-semibold">Support Package</h2>
+          <div className="text-sm text-muted-foreground">This section will display the latest generated info package (summary, sources). For now, use the API to generate: POST /api/engagements/{id}/support-package.</div>
+        </section>
+      </div>
     </div>
   );
 }
