@@ -47,6 +47,7 @@ export function ThinSidebar() {
     { icon: Home, name: 'Home', href: '/home' },
     { icon: FlaskConical, name: 'Research', href: '/home/research' },
     { icon: Newspaper, name: 'News', href: '/home/news' },
+    { icon: Folders, name: 'Engagements', href: '/home/engagements' },
     { icon: Folders, name: 'Spaces', href: '/home/spaces' },
   ];
 
