@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { WinStatementsSection } from "@/components/engagements/win-statements-section";
+import { WinGenerateSection } from "@/components/engagements/win-generate-section";
 
 type WinStatement = {
   id: string;
@@ -94,6 +95,10 @@ export default async function EngagementDetailPage({ params }: { params: Promise
 
       <section>
         <WinStatementsSection engagementId={id} initial={(winStatements ?? []) as WinStatement[]} />
+      </section>
+
+      <section>
+        <WinGenerateSection engagementId={id} />
       </section>
 
       <section className="space-y-2">
