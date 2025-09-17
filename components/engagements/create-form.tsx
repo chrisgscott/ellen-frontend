@@ -41,15 +41,78 @@ export function CreateEngagementForm() {
     });
 
     const data = await res.json().catch(() => ({}));
-    setLoading(false);
     if (!res.ok) {
       setError(data?.error || "Failed to create engagement");
+      setLoading(false);
       return;
     }
     const engagementId = data?.engagement?.id;
     if (engagementId) {
+      // Fire webhook on initial submission BEFORE report generation
+      try {
+        const payload = {
+          engagementId,
+          title,
+          topic,
+          meeting_datetime,
+          duration_minutes,
+          location,
+          org_counterparty,
+          objectives,
+          notes,
+          participants: [],
+          original: {
+            title,
+            topic,
+            meeting_datetime,
+            duration_minutes,
+            location,
+            org_counterparty,
+            objectives,
+            notes,
+          },
+          meta: {
+            sentAt: new Date().toISOString(),
+            source: "ellen-dashboard/create-engagement-form",
+            trigger: "create",
+          },
+        };
+        const hookRes = await fetch(
+          "https://n8n-od58.onrender.com/webhook-test/cfeaddc6-77d3-4c34-8bf5-32d8900ebb7b",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }
+        );
+        if (!hookRes.ok) {
+          // Non-blocking: log to console and continue
+          console.warn("[create-form] webhook non-OK:", hookRes.status);
+        }
+      } catch (err) {
+        // Non-blocking
+        console.warn("[create-form] webhook error:", err);
+      }
+
+      // Trigger report generation and wait for completion before redirecting
+      try {
+        const reportRes = await fetch(`/api/engagements/${engagementId}/report`, { method: "POST" });
+        if (!reportRes.ok) {
+          const r: unknown = await reportRes.json().catch(() => ({}));
+          const errMsg = typeof r === "object" && r && "error" in r ? String((r as { error?: unknown }).error) : undefined;
+          setError(errMsg || `Failed to generate report (${reportRes.status})`);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        setError("Failed to generate report");
+        setLoading(false);
+        return;
+      }
+      setLoading(false);
       router.push(`/home/engagements/${engagementId}`);
     } else {
+      setLoading(false);
       router.refresh();
     }
   }
@@ -94,7 +157,7 @@ export function CreateEngagementForm() {
         <textarea name="notes" className="w-full border rounded px-2 py-1" rows={3} />
       </div>
       <button type="submit" disabled={loading} className="bg-primary text-white px-3 py-1.5 rounded">
-        {loading ? "Creating..." : "Create Engagement"}
+        {loading ? "Creating & Generating report..." : "Create Engagement"}
       </button>
     </form>
   );

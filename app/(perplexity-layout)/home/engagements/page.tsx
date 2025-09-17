@@ -18,6 +18,34 @@ export default async function EngagementsPage() {
     );
   }
 
+  // Access gate: require engagements_access flag on the user's profile
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('engagements_access')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile?.engagements_access) {
+    return (
+      <div className="min-h-[100dvh] w-full flex items-center justify-center p-6">
+        <div className="max-w-xl text-center">
+          <h1 className="text-2xl font-semibold">Engagements Access Required</h1>
+          <p className="text-sm text-muted-foreground mt-3">
+            You don’t currently have access to Engagements. If you believe this is an error or you need access,
+            please email an administrator at{' '}
+            <a
+              href="mailto:cscott@tier-tech.com?subject=Engagements%20Access%20Request"
+              className="text-primary underline"
+            >
+              cscott@tier-tech.com
+            </a>
+            .
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   const { data: engagements, error } = await supabase
     .from("engagements")
     .select("id,title,topic,meeting_datetime,org_counterparty,updated_at")

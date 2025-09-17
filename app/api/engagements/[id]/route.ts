@@ -58,6 +58,9 @@ export async function PATCH(
     objectives?: string[] | null;
     notes?: string | null;
     metadata?: Record<string, unknown> | null;
+    wiift?: string | null;
+    wiifm?: string | null;
+    isp_md?: string | null;
   };
 
   const updates: EngagementUpdate = {};
@@ -88,6 +91,12 @@ export async function PATCH(
   if ("metadata" in body)
     updates.metadata =
       (body.metadata as Record<string, unknown>) ?? ({} as Record<string, unknown>);
+  if ("wiift" in body)
+    updates.wiift = typeof body.wiift === "string" ? body.wiift : body.wiift ?? null;
+  if ("wiifm" in body)
+    updates.wiifm = typeof body.wiifm === "string" ? body.wiifm : body.wiifm ?? null;
+  if ("isp_md" in body)
+    updates.isp_md = typeof body.isp_md === "string" ? body.isp_md : body.isp_md ?? null;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ ok: true, engagement: null });
