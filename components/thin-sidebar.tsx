@@ -12,7 +12,8 @@ import {
   User, 
   LogOut,
   Shield, // Added for Admin button
-  Megaphone
+  Megaphone,
+  Users // Icon for Org Chart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client'; // Added to fetch role
@@ -25,6 +26,8 @@ import Image from 'next/image';
 export function ThinSidebar() {
   const pathname = usePathname();
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [orgChartAccess, setOrgChartAccess] = useState<boolean>(false);
+  const [engagementsAccess, setEngagementsAccess] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -33,24 +36,33 @@ export function ThinSidebar() {
       if (user) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('role')
+          .select('role, org_chart_access, engagements_access')
           .eq('id', user.id)
           .single();
         if (profile) {
           setUserRole(profile.role);
+          setOrgChartAccess(!!profile.org_chart_access);
+          setEngagementsAccess(!!profile.engagements_access);
         }
       }
     };
     fetchUserRole();
   }, []);
   
-  const navItems = [
+  const baseNavItems = [
     { icon: Home, name: 'Home', href: '/home' },
     { icon: FlaskConical, name: 'Research', href: '/home/research' },
     { icon: Newspaper, name: 'News', href: '/home/news' },
-    { icon: Calendar, name: 'Engagements', href: '/home/engagements' },
     { icon: Folders, name: 'Spaces', href: '/home/spaces' },
   ];
+
+  const navItems = [...baseNavItems];
+  if (engagementsAccess) {
+    navItems.push({ icon: Calendar, name: 'Engagements', href: '/home/engagements' });
+  }
+  if (orgChartAccess) {
+    navItems.push({ icon: Users, name: 'Org Chart', href: '/home/org-chart' });
+  }
 
   return (
     <div className="flex flex-col h-screen w-14 bg-background border-r border-border">

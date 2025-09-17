@@ -219,3 +219,17 @@
 [2025-07-12 21:20] — Fixed middleware blocking API routes. The authentication middleware was redirecting `/api/chat` requests to `/auth/login`, causing the frontend to still hit n8n. Updated middleware config to exclude `api/` routes from authentication checks.
 
 [2025-07-12 21:14] — Completed chat migration from n8n webhook to in-house Next.js API. Removed all legacy n8n JSON parsing logic (unwrap function, raw response handling) from the frontend. Chat now uses `/api/chat` endpoint with proper SSE streaming and clean error handling.
+
+[2025-09-17 08:29] — Audited org-chart revert. Confirmed middleware has no public allowlist for org-chart (so `/org-chart` is private again). Found duplicate route at `app/(perplexity-layout)/home/org-chart/` (identical components) and an empty `app/org-chart/password/` directory left over from password-gating attempt. Recommended cleanup: remove the duplicate `home/org-chart` directory and delete the empty `password` folder so `/org-chart` is the single canonical private route.
+
+[2025-09-17 08:33] — Performed org-chart cleanup. Deleted duplicate route `app/(perplexity-layout)/home/org-chart/` and removed empty `app/org-chart/password/` directory. Verified canonical route remains `app/org-chart/` → `/org-chart`, and middleware continues to protect it (private access only). Repo is now free of org-chart duplication and password-gating remnants.
+
+[2025-09-17 08:58] — Added conditional Org Chart item to ThinSidebar. `components/thin-sidebar.tsx` now queries `profiles.role, org_chart_access` via Supabase client and shows an `Org Chart` link (`/org-chart`) only when `org_chart_access` is TRUE. Used `GitBranch` icon from `lucide-react`. This ties UI visibility to the new `profiles.org_chart_access` boolean.
+
+[2025-09-17 09:07] — Gated `/org-chart` page by `profiles.org_chart_access`. Updated `app/org-chart/page.tsx` to fetch the current user's profile server-side and, when access is FALSE (or profile missing), render an access-needed message with a mailto link to `cscott@tier-tech.com` for requesting permissions.
+
+[2025-09-17 09:09] — Ensured org chart inherits Perplexity layout. Added `app/(perplexity-layout)/home/org-chart/page.tsx` to re-export `default` and `dynamic` from `app/org-chart/page.tsx`, and updated `components/thin-sidebar.tsx` to link to `/home/org-chart`. Keeps a single source of truth while rendering within the thin sidebar layout.
+
+[2025-09-17 09:17] — Implemented Engagements access control. Sidebar now hides the Engagements item unless `profiles.engagements_access` is TRUE (updated `components/thin-sidebar.tsx` to fetch `role, org_chart_access, engagements_access`). Gated `app/(perplexity-layout)/home/engagements/page.tsx` to render an access-needed message with mailto `cscott@tier-tech.com` when access is FALSE. Maintains consistent UX with Org Chart gating.
+
+[2025-09-17 09:23] — Updated Org Chart sidebar icon to `Users` (lucide-react) for clearer semantics. Change in `components/thin-sidebar.tsx`; link remains `/home/org-chart` and still respects `profiles.org_chart_access`.
