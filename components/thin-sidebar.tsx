@@ -8,6 +8,7 @@ import {
   FlaskConical,
   Newspaper,
   Folders,
+  Calendar,
   User, 
   LogOut,
   Shield, // Added for Admin button
