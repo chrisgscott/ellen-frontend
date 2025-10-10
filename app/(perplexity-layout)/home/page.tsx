@@ -83,20 +83,20 @@ export default function HomePage() {
   };
 
   return (
-    <div className="relative flex flex-col items-center justify-center h-full bg-blue-50 overflow-hidden">
+    <div className="relative flex flex-col items-center justify-center h-full bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 overflow-hidden">
       {/* CSS Waves Background */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0 opacity-60 dark:opacity-30">
         {/* Wave 1 - Bottom layer */}
         <svg className="absolute bottom-0 w-full h-full" viewBox="0 0 1200 800" preserveAspectRatio="none">
-          <path d="M0,400 C300,300 600,500 1200,400 L1200,800 L0,800 Z" fill="#dbeafe" opacity="0.5" />
+          <path d="M0,400 C300,300 600,500 1200,400 L1200,800 L0,800 Z" className="fill-blue-200 dark:fill-blue-900" opacity="0.5" />
         </svg>
         {/* Wave 2 - Middle layer */}
         <svg className="absolute bottom-0 w-full h-full" viewBox="0 0 1200 800" preserveAspectRatio="none">
-          <path d="M0,500 C400,350 800,650 1200,500 L1200,800 L0,800 Z" fill="#bfdbfe" opacity="0.4" />
+          <path d="M0,500 C400,350 800,650 1200,500 L1200,800 L0,800 Z" className="fill-indigo-200 dark:fill-indigo-900" opacity="0.4" />
         </svg>
         {/* Wave 3 - Top layer */}
         <svg className="absolute bottom-0 w-full h-full" viewBox="0 0 1200 800" preserveAspectRatio="none">
-          <path d="M0,600 C350,450 850,750 1200,600 L1200,800 L0,800 Z" fill="#93c5fd" opacity="0.3" />
+          <path d="M0,600 C350,450 850,750 1200,600 L1200,800 L0,800 Z" className="fill-purple-200 dark:fill-purple-900" opacity="0.3" />
         </svg>
       </div>
       <div className="absolute top-4 right-4 hidden z-10">
@@ -104,11 +104,11 @@ export default function HomePage() {
           <Button variant="outline" size="sm">Back to Original Dashboard</Button>
         </Link>
       </div>
-      <div className="relative z-10 w-full max-w-3xl bg-white/70 backdrop-blur-md border border-white/40 p-12 rounded-xl text-center shadow-2xl">
+      <div className="relative z-10 w-full max-w-3xl bg-card/80 backdrop-blur-md border border-border p-12 rounded-xl text-center shadow-2xl">
         {/* Logo and Title */}
         <div className="mb-6">
-          <h1 className="text-4xl font-bold text-gray-800 mb-3">{greeting}</h1>
-          <p className="text-lg text-gray-700">I&apos;m ELLEN, your critical materials AI analyst.</p>
+          <h1 className="text-4xl font-bold text-foreground mb-3">{greeting}</h1>
+          <p className="text-lg text-muted-foreground">I&apos;m ELLEN, your critical materials AI analyst.</p>
         </div>
 
         {/* Search Form */}

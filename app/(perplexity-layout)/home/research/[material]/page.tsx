@@ -148,9 +148,9 @@ const ScoreCard = ({ label, value, max = 5 }: { label: string; value: number; ma
   };
 
   return (
-    <div className={`text-center p-4 rounded-lg border ${getBackgroundColor(value, max)}`}>
+    <div className={`text-center p-4 rounded-lg border-2 ${getBackgroundColor(value, max)}`}>
       <div className="text-2xl font-bold text-primary">{value || 'N/A'}/{max}</div>
-      <div className="text-sm text-muted-foreground">{label}</div>
+      <div className="text-sm text-muted-foreground font-medium">{label}</div>
     </div>
   );
 };
@@ -314,15 +314,15 @@ export default async function MaterialPage({ params }: PageProps) {
         </header>
         
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-8 text-center max-w-md">
-            <div className="text-yellow-800">
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-8 text-center max-w-md">
+            <div className="text-yellow-800 dark:text-yellow-200">
               <h3 className="text-xl font-semibold mb-3">Information Coming Soon</h3>
               <p className="text-sm leading-relaxed">
                 We&apos;re currently compiling detailed information for this material. 
                 Please check back later or{' '}
                 <a 
                   href={`mailto:cscott@tier-tech.com?subject=Please update ${encodeURIComponent(materialData.material)}`}
-                  className="text-yellow-700 underline hover:text-yellow-900 font-medium"
+                  className="text-yellow-700 dark:text-yellow-300 underline hover:text-yellow-900 dark:hover:text-yellow-100 font-medium"
                 >
                   bug Chris
                 </a>{' '}
@@ -384,8 +384,8 @@ export default async function MaterialPage({ params }: PageProps) {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <main className="md:col-span-3">
                 {materialData.short_summary && (
-                    <div className="mb-6 p-4 bg-muted/30 rounded-lg border-l-4 border-primary">
-                        <p className="text-lg leading-relaxed">{materialData.short_summary}</p>
+                    <div className="mb-6 p-4 bg-primary/5 dark:bg-primary/10 rounded-lg border-l-4 border-primary">
+                        <p className="text-lg leading-relaxed text-foreground">{materialData.short_summary}</p>
                     </div>
                 )}
                 
@@ -441,18 +441,18 @@ export default async function MaterialPage({ params }: PageProps) {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr>
-                                    <th className="border-b p-2">Metric</th>
-                                    <th className="border-b p-2">Value</th>
+                                    <th className="border-b border-border p-2 text-foreground">Metric</th>
+                                    <th className="border-b border-border p-2 text-foreground">Value</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr><td className="border-b p-2">Typical Lot Size</td><td className="border-b p-2">{materialData.typical_lot_size_kg} kg</td></tr>
-                                <tr><td className="border-b p-2">Deal Size Range</td><td className="border-b p-2">${materialData.typical_deal_size_min_usd} - ${materialData.typical_deal_size_max_usd}</td></tr>
-                                <tr><td className="border-b p-2">Minimum Order</td><td className="border-b p-2">${materialData.minimum_order_value_usd}</td></tr>
-                                <tr><td className="border-b p-2">Settlement Period</td><td className="border-b p-2">{materialData.typical_settlement_days} days</td></tr>
-                                <tr><td className="border-b p-2">Annual Trading Volume</td><td className="border-b p-2">{materialData.trading_volume_annual_tonnes} tonnes</td></tr>
-                                <tr><td className="border-b p-2">Inventory Turnover</td><td className="border-b p-2">{materialData.inventory_turnover_days} days</td></tr>
-                                <tr><td className="border-b p-2">Major Trading Hubs</td><td className="border-b p-2"><StringArrayDisplay content={materialData.major_trading_hubs} displayAs="text" /></td></tr>
+                            <tbody className="text-foreground">
+                                <tr><td className="border-b border-border p-2">Typical Lot Size</td><td className="border-b border-border p-2">{materialData.typical_lot_size_kg} kg</td></tr>
+                                <tr><td className="border-b border-border p-2">Deal Size Range</td><td className="border-b border-border p-2">${materialData.typical_deal_size_min_usd} - ${materialData.typical_deal_size_max_usd}</td></tr>
+                                <tr><td className="border-b border-border p-2">Minimum Order</td><td className="border-b border-border p-2">${materialData.minimum_order_value_usd}</td></tr>
+                                <tr><td className="border-b border-border p-2">Settlement Period</td><td className="border-b border-border p-2">{materialData.typical_settlement_days} days</td></tr>
+                                <tr><td className="border-b border-border p-2">Annual Trading Volume</td><td className="border-b border-border p-2">{materialData.trading_volume_annual_tonnes} tonnes</td></tr>
+                                <tr><td className="border-b border-border p-2">Inventory Turnover</td><td className="border-b border-border p-2">{materialData.inventory_turnover_days} days</td></tr>
+                                <tr><td className="border-b border-border p-2">Major Trading Hubs</td><td className="border-b border-border p-2"><StringArrayDisplay content={materialData.major_trading_hubs} displayAs="text" /></td></tr>
                             </tbody>
                         </table>
                     </SubSection>
@@ -483,15 +483,15 @@ export default async function MaterialPage({ params }: PageProps) {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr>
-                                    <th className="border-b p-2">Factor</th>
-                                    <th className="border-b p-2">Score</th>
-                                    <th className="border-b p-2">Details</th>
+                                    <th className="border-b border-border p-2 text-foreground">Factor</th>
+                                    <th className="border-b border-border p-2 text-foreground">Score</th>
+                                    <th className="border-b border-border p-2 text-foreground">Details</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr><td className="border-b p-2">ROI Potential</td><td className="border-b p-2">{materialData.roi_potential_score}/5</td><td className="border-b p-2">{materialData.payback_period_months} month payback</td></tr>
-                                <tr><td className="border-b p-2">Competitive Moat</td><td className="border-b p-2">{materialData.competitive_moat_strength}/5</td><td className="border-b p-2">Market defensibility</td></tr>
-                                <tr><td className="border-b p-2">Capital Intensity</td><td className="border-b p-2">{materialData.capital_intensity_score}/5</td><td className="border-b p-2">Upfront investment needs</td></tr>
+                            <tbody className="text-foreground">
+                                <tr><td className="border-b border-border p-2">ROI Potential</td><td className="border-b border-border p-2">{materialData.roi_potential_score}/5</td><td className="border-b border-border p-2">{materialData.payback_period_months} month payback</td></tr>
+                                <tr><td className="border-b border-border p-2">Competitive Moat</td><td className="border-b border-border p-2">{materialData.competitive_moat_strength}/5</td><td className="border-b border-border p-2">Market defensibility</td></tr>
+                                <tr><td className="border-b border-border p-2">Capital Intensity</td><td className="border-b border-border p-2">{materialData.capital_intensity_score}/5</td><td className="border-b border-border p-2">Upfront investment needs</td></tr>
                             </tbody>
                         </table>
                     </SubSection>

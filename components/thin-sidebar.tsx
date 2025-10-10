@@ -13,7 +13,7 @@ import {
   LogOut,
   Shield, // Added for Admin button
   Megaphone,
-  Users // Icon for Org Chart
+  Users, // Icon for Org Chart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client'; // Added to fetch role
@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { SessionLibrary } from './session-library';
+import { ThemeToggle } from './theme-toggle';
 import Image from 'next/image';
 
 export function ThinSidebar() {
@@ -153,6 +154,9 @@ export function ThinSidebar() {
               <TooltipContent side="right">Admin</TooltipContent>
             </Tooltip>
           )}
+
+          {/* Theme Toggle */}
+          <ThemeToggle />
 
           {/* Announcements */}
           <Tooltip>

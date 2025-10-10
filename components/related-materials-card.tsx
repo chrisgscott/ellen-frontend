@@ -14,7 +14,7 @@ export function RelatedMaterialsCard({ material }: RelatedMaterialsCardProps) {
   
   return (
     <Link href={`/home/research/${encodeURIComponent(materialName)}`} target="_blank" rel="noopener noreferrer">
-      <div className="min-w-[240px] max-w-[280px] h-24 flex items-center gap-4 bg-gray-100 hover:shadow-md transition-shadow cursor-pointer rounded-xl border p-4 overflow-hidden">
+      <div className="min-w-[240px] max-w-[280px] h-24 flex items-center gap-4 bg-card hover:bg-accent hover:shadow-md transition-all cursor-pointer rounded-xl border border-border p-4 overflow-hidden">
         {/* Element-like square */}
         <div
           className="w-12 h-12 flex items-center justify-center rounded-md text-white text-lg font-semibold flex-shrink-0"

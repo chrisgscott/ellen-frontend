@@ -86,3 +86,56 @@ html {
     @apply bg-background text-foreground;
   }
 }
+
+/* Frill Widget Dark Mode Overrides */
+.dark [id^="frill-container"],
+.dark [class*="frill"] {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark [id^="frill-container"] [class*="header"],
+.dark [id^="frill-container"] header {
+  background-color: hsl(var(--card)) !important;
+  border-bottom-color: hsl(var(--border)) !important;
+}
+
+.dark [id^="frill-container"] [class*="content"],
+.dark [id^="frill-container"] main {
+  background-color: hsl(var(--background)) !important;
+}
+
+.dark [id^="frill-container"] input,
+.dark [id^="frill-container"] textarea,
+.dark [id^="frill-container"] select {
+  background-color: hsl(var(--input)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark [id^="frill-container"] button {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+.dark [id^="frill-container"] [class*="card"],
+.dark [id^="frill-container"] [class*="item"] {
+  background-color: hsl(var(--card)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark [id^="frill-container"] a {
+  color: hsl(var(--primary)) !important;
+}
+
+.dark [id^="frill-container"] [class*="text"],
+.dark [id^="frill-container"] p,
+.dark [id^="frill-container"] span,
+.dark [id^="frill-container"] div {
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark [id^="frill-container"] [class*="muted"],
+.dark [id^="frill-container"] [class*="secondary"] {
+  color: hsl(var(--muted-foreground)) !important;
+}

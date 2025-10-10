@@ -44,14 +44,14 @@ export default function OrgTree(
   const [hoveredLine, setHoveredLine] = useState<{ s: string; t: string; x: number; y: number } | null>(null)
   const unitColors = useMemo(
     () => [
-      'bg-sky-100',
-      'bg-amber-100',
-      'bg-emerald-100',
-      'bg-rose-100',
-      'bg-violet-100',
-      'bg-lime-100',
-      'bg-cyan-100',
-      'bg-fuchsia-100',
+      'bg-sky-100 dark:bg-sky-900/30',
+      'bg-amber-100 dark:bg-amber-900/30',
+      'bg-emerald-100 dark:bg-emerald-900/30',
+      'bg-rose-100 dark:bg-rose-900/30',
+      'bg-violet-100 dark:bg-violet-900/30',
+      'bg-lime-100 dark:bg-lime-900/30',
+      'bg-cyan-100 dark:bg-cyan-900/30',
+      'bg-fuchsia-100 dark:bg-fuchsia-900/30',
     ],
     []
   )
@@ -157,7 +157,8 @@ export default function OrgTree(
               onMouseEnter={() => setHoveredKey(n.key)}
               onMouseLeave={() => setHoveredKey(null)}
               onClick={() => setRoleInUrl(n.key)}
-              className={`group min-w-[220px] max-w-[280px] text-left rounded-md border ${unitColor ?? 'bg-card'} hover:bg-accent transition shadow-sm relative z-10`}
+              className={`group min-w-[220px] max-w-[280px] text-left rounded-md border ${unitColor ?? 'bg-card'} hover:bg-accent transition shadow-sm relative z-10 backdrop-blur-sm`}
+              style={{ backgroundColor: unitColor ? undefined : 'hsl(var(--card))' }}
             >
               <div className="px-3 py-2 border-b">
                 <div className="text-sm font-semibold leading-5">{n.title}</div>
@@ -223,7 +224,8 @@ export default function OrgTree(
             onMouseEnter={() => setHoveredKey(n.key)}
             onMouseLeave={() => setHoveredKey(null)}
             onClick={() => setRoleInUrl(n.key)}
-            className={`group min-w-[220px] max-w-[280px] text-left rounded-md border ${unitColor ?? 'bg-card'} hover:bg-accent transition shadow-sm relative z-10`}
+            className={`group min-w-[220px] max-w-[280px] text-left rounded-md border ${unitColor ?? 'bg-card'} hover:bg-accent transition shadow-sm relative z-10 backdrop-blur-sm`}
+            style={{ backgroundColor: unitColor ? undefined : 'hsl(var(--card))' }}
           >
             <div className="px-3 py-2 border-b">
               <div className="text-sm font-semibold leading-5">{n.title}</div>
@@ -278,7 +280,7 @@ export default function OrgTree(
     <div ref={containerRef} className={(orientation === 'vertical' ? 'w-full flex flex-col items-center' : 'w-full flex flex-row items-start') + ' relative'}>
       {/* SVG overlay for dotted_to dashed connectors */}
       {showDotted && (
-      <svg className="absolute inset-0 z-0" width="100%" height="100%">
+      <svg className="absolute inset-0 pointer-events-none" style={{ zIndex: 5 }} width="100%" height="100%">
         {lines.map((ln, i) => {
           const isKeyFocus = hoveredKey ? (ln.s === hoveredKey || ln.t === hoveredKey) : false
           const isLineFocus = hoveredLine ? (hoveredLine.s === ln.s && hoveredLine.t === ln.t) : false
@@ -307,7 +309,7 @@ export default function OrgTree(
                 stroke="transparent"
                 strokeWidth={14}
                 strokeLinecap="round"
-                style={{ pointerEvents: 'stroke' }}
+                style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
                 onMouseEnter={(e) => {
                   const rect = containerRef.current?.getBoundingClientRect()
                   const x = rect ? e.clientX - rect.left : 0

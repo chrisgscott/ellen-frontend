@@ -193,8 +193,8 @@ function ChatPageContent() {
                 className="flex flex-col flex-1"
               >
               {/* Sticky Header - User Query */}
-              <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-4">
-                <h2 className="text-2xl font-semibold leading-tight line-clamp-2" style={{ color: '#1D638B' }}>
+              <div className="sticky top-0 z-10 bg-background border-b border-border px-6 py-4 backdrop-blur-sm bg-opacity-95">
+                <h2 className="text-2xl font-semibold leading-tight line-clamp-2 text-primary">
                   {thread.user_message?.content}
                 </h2>
               </div>
@@ -203,21 +203,21 @@ function ChatPageContent() {
               <div className="flex-1 overflow-y-auto px-6 py-6 pb-24">
               {/* Assistant Response */}
               {thread.assistant_message && (
-                <div className="prose prose-gray max-w-none mb-8 prose-headings:text-gray-900 prose-p:text-gray-800 prose-strong:text-gray-900 prose-code:text-gray-900 prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-gray-50 prose-pre:border prose-table:border-collapse prose-th:border prose-th:border-gray-300 prose-th:bg-gray-50 prose-th:px-4 prose-th:py-2 prose-td:border prose-td:border-gray-300 prose-td:px-4 prose-td:py-2">
+                <div className="prose prose-gray dark:prose-invert max-w-none mb-8 prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-muted prose-pre:border prose-pre:border-border prose-table:border-collapse prose-th:border prose-th:border-border prose-th:bg-muted prose-th:px-4 prose-th:py-2 prose-td:border prose-td:border-border prose-td:px-4 prose-td:py-2 prose-a:text-primary hover:prose-a:text-primary/80">
                   <ReactMarkdown 
                     remarkPlugins={[remarkGfm]}
                     components={{
                       // Custom table styling
                       table: ({ children }) => (
                         <div className="overflow-x-auto my-6">
-                          <table className="min-w-full border-collapse border border-gray-300 rounded-lg">
+                          <table className="min-w-full border-collapse border border-border rounded-lg">
                             {children}
                           </table>
                         </div>
                       ),
                       // Custom code block styling
                       pre: ({ children }) => (
-                        <pre className="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto">
+                        <pre className="bg-muted border border-border rounded-lg p-4 overflow-x-auto">
                           {children}
                         </pre>
                       ),
@@ -225,7 +225,7 @@ function ChatPageContent() {
                       code: ({ children, className }) => {
                         const isInline = !className;
                         return isInline ? (
-                          <code className="bg-gray-100 text-gray-900 px-1.5 py-0.5 rounded text-sm font-mono">
+                          <code className="bg-muted text-foreground px-1.5 py-0.5 rounded text-sm font-mono">
                             {children}
                           </code>
                         ) : (
@@ -234,7 +234,7 @@ function ChatPageContent() {
                       },
                       // Custom blockquote styling
                       blockquote: ({ children }) => (
-                        <blockquote className="border-l-4 border-blue-500 pl-4 py-2 my-4 bg-blue-50 italic text-gray-700">
+                        <blockquote className="border-l-4 border-primary pl-4 py-2 my-4 bg-primary/10 italic text-muted-foreground">
                           {children}
                         </blockquote>
                       )
@@ -248,7 +248,7 @@ function ChatPageContent() {
               {/* Sources */}
               {thread.sources && thread.sources.length > 0 && (
                 <div className="mb-6">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Sources</h4>
+                  <h4 className="text-sm font-semibold text-foreground mb-3">Sources</h4>
                   <ul className="space-y-2">
                     {thread.sources.map((source, index) => (
                       <li key={index}>
@@ -256,7 +256,7 @@ function ChatPageContent() {
                           href={source.url} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 hover:underline text-sm"
+                          className="text-primary hover:text-primary/80 hover:underline text-sm"
                         >
                           {source.title || source.url}
                         </a>
@@ -269,7 +269,7 @@ function ChatPageContent() {
               {/* Related Materials Carousel */}
               {thread.related_materials && thread.related_materials.length > 0 && (
                 <div className="mb-8">
-                  <h3 className="text-lg font-semibold mb-4">Related Materials</h3>
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Related Materials</h3>
                   <Carousel className="w-full">
                     <CarouselContent className="-ml-2 md:-ml-4">
                       {thread.related_materials.map((material, index) => (
@@ -291,7 +291,7 @@ function ChatPageContent() {
               {/* Suggested Questions */}
               {thread.suggested_questions && thread.suggested_questions.length > 0 && (
                 <div className="mb-6">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Ask a follow-up</h4>
+                  <h4 className="text-sm font-semibold text-foreground mb-3">Ask a follow-up</h4>
                   <div className="space-y-2">
                     {thread.suggested_questions.map((question, index) => (
                       <button
@@ -302,9 +302,9 @@ function ChatPageContent() {
                           e.stopPropagation();
                           sendMessage(question);
                         }}
-                        className="w-full text-sm bg-gray-50 hover:bg-gray-100 text-gray-700 px-4 py-3 rounded-lg border border-gray-200 transition-colors text-left flex items-center gap-2"
+                        className="w-full text-sm bg-muted hover:bg-muted/80 text-foreground px-4 py-3 rounded-lg border border-border transition-colors text-left flex items-center gap-2"
                       >
-                        <ChevronRight className="h-4 w-4 flex-shrink-0" style={{ color: '#1D638B' }} />
+                        <ChevronRight className="h-4 w-4 flex-shrink-0 text-primary" />
                         <span>{question}</span>
                       </button>
                     ))}

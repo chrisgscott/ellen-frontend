@@ -102,7 +102,7 @@ const getFaviconUrl = (source?: string, link?: string) => {
 };
 
 const NewsItemCard = ({ item, onItemClick, onHide, isHiding }: NewsItemCardProps) => (
-  <Card className="shadow-[0_2px_8px_rgba(0,0,0,0.05)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-shadow duration-300">
+  <Card className="border border-border hover:border-primary/50 shadow-sm hover:shadow-md dark:shadow-none dark:hover:shadow-none transition-all duration-300">
     <CardContent className="p-4">
       <div className="space-y-3">
         {/* Category Badge and Time */}
