@@ -110,10 +110,11 @@ export default function DailyBriefDetailPage() {
   const readingMins = brief?.metadata?.word_count ? Math.max(1, Math.round(brief.metadata.word_count / 200)) : null;
   
   // Format date for header
-  const briefDate = new Date(brief.date_sent + 'T00:00:00').toLocaleDateString('en-US', {
+  const briefDate = new Date(brief.date_sent).toLocaleDateString('en-US', {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
+    timeZone: 'UTC',
   });
   
   // Convert headline to title case

@@ -72,9 +72,9 @@ export default function DailyBriefArchivePage() {
               <p className="text-sm text-muted-foreground">
                 {briefs.length} editions • {briefs.length > 0 && (
                   <>
-                    {new Date(briefs[briefs.length - 1].date_sent + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    {new Date(briefs[briefs.length - 1].date_sent).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}
                     {' - '}
-                    {new Date(briefs[0].date_sent + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {new Date(briefs[0].date_sent).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
                   </>
                 )}
               </p>
@@ -96,11 +96,12 @@ export default function DailyBriefArchivePage() {
                       <div className="flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5" />
                         <span>
-                          {new Date(brief.date_sent + 'T00:00:00').toLocaleDateString('en-US', {
+                          {new Date(brief.date_sent).toLocaleDateString('en-US', {
                             weekday: 'short',
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric',
+                            timeZone: 'UTC',
                           })}
                         </span>
                       </div>
