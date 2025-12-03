@@ -11,6 +11,12 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { RelatedMaterialsCard } from '@/components/related-materials-card';
 import type { DailyBrief } from '@/app/api/daily-brief/route';
 import type { Material } from '@/app/(perplexity-layout)/home/chat/types';
+import {
+  type MaterialInfo,
+  createMaterialMatcher,
+  createMaterialMap,
+  processChildrenWithMaterialLinks,
+} from '@/lib/utils/link-materials';
 
 export default function DailyBriefDetailPage() {
   const params = useParams<{ id: string }>();
@@ -21,6 +27,11 @@ export default function DailyBriefDetailPage() {
   const [loadingMaterials, setLoadingMaterials] = React.useState(false);
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
   const [showMiniHeader, setShowMiniHeader] = React.useState(false);
+  
+  // Material linking state
+  const [allMaterials, setAllMaterials] = React.useState<MaterialInfo[]>([]);
+  const materialMatcher = React.useMemo(() => createMaterialMatcher(allMaterials), [allMaterials]);
+  const materialMap = React.useMemo(() => createMaterialMap(allMaterials), [allMaterials]);
 
   React.useEffect(() => {
     async function fetchBrief() {
@@ -64,6 +75,25 @@ export default function DailyBriefDetailPage() {
     };
     loadMaterials();
   }, [brief?.featured_materials]);
+
+  // Fetch all materials for linking
+  React.useEffect(() => {
+    async function fetchAllMaterials() {
+      try {
+        const res = await fetch('/api/materials');
+        if (!res.ok) return;
+        const data = await res.json();
+        // Extract just id and material name
+        setAllMaterials(data.map((m: { id: string; material: string }) => ({
+          id: m.id,
+          material: m.material,
+        })));
+      } catch (err) {
+        console.error('Error loading materials for linking:', err);
+      }
+    }
+    fetchAllMaterials();
+  }, []);
 
   // Sticky header on scroll
   React.useEffect(() => {
@@ -224,13 +254,26 @@ export default function DailyBriefDetailPage() {
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   ),
-                  p: ({ children }) => <p className="mb-4 leading-relaxed">{children}</p>,
+                  p: ({ children }) => (
+                    <p className="mb-4 leading-relaxed">
+                      {processChildrenWithMaterialLinks(children, materialMatcher, materialMap)}
+                    </p>
+                  ),
                   ul: ({ children }) => <ul className="list-disc pl-6 mb-4 space-y-1">{children}</ul>,
                   ol: ({ children }) => <ol className="list-decimal pl-6 mb-4 space-y-1">{children}</ol>,
-                  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                  li: ({ children }) => (
+                    <li>
+                      {processChildrenWithMaterialLinks(children, materialMatcher, materialMap)}
+                    </li>
+                  ),
+                  strong: ({ children }) => (
+                    <strong className="font-semibold">
+                      {processChildrenWithMaterialLinks(children, materialMatcher, materialMap)}
+                    </strong>
+                  ),
                   blockquote: ({ children }) => (
                     <blockquote className="border-l-4 border-primary/30 pl-4 italic my-4">
-                      {children}
+                      {processChildrenWithMaterialLinks(children, materialMatcher, materialMap)}
                     </blockquote>
                   ),
                 }}
