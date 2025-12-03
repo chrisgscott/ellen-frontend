@@ -22,23 +22,10 @@ const MATERIAL_ALIASES: Record<string, string> = {
   'pgms': 'Platinum',
   'platinum group': 'Platinum',
   'platinum group metals': 'Platinum',
-  'li': 'Lithium',
-  'co': 'Cobalt',
-  'ni': 'Nickel',
-  'cu': 'Copper',
-  'al': 'Aluminum',
-  'ti': 'Titanium',
-  'w': 'Tungsten',
-  'mo': 'Molybdenum',
-  'nb': 'Niobium',
-  'ta': 'Tantalum',
-  'ga': 'Gallium',
-  'ge': 'Germanium',
-  'in': 'Indium',
-  'sb': 'Antimony',
-  'te': 'Tellurium',
-  'bi': 'Bismuth',
   'czt': 'Cadmium Zinc Telluride',
+  // Note: Removed short element symbols (Li, Co, Ni, Cu, Al, Ti, W, Mo, Nb, Ta, Ga, Ge, In, Sb, Te, Bi)
+  // because they cause false positives with common English words (e.g., "in", "co", "al")
+  // and are rarely used in prose without the full element name nearby.
 };
 
 /**
