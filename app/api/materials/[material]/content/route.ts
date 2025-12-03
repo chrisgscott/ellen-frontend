@@ -41,33 +41,28 @@ export async function GET(
     const decodedMaterial = decodeURIComponent(material);
 
     // Fetch articles mentioning this material
-    // related_materials is jsonb[], so we use a raw filter with text cast
+    // related_materials is jsonb[] - use textSearch on array cast to text
     const { data: articles, error: articlesError } = await supabase
-      .from('rss_feeds')
-      .select('id, title, link, source, created_at')
-      .filter('related_materials::text', 'ilike', `%${decodedMaterial}%`)
-      .order('created_at', { ascending: false })
-      .limit(20);
+      .rpc('search_articles_by_material', { material_name: decodedMaterial })
+      .limit(50);
 
     if (articlesError) {
       console.error('Error fetching articles:', articlesError);
+      // Fallback: try without RPC if function doesn't exist
     }
 
     // Fetch daily briefs mentioning this material
-    // featured_materials is text[], so we use a raw filter with text cast
+    // featured_materials is text[] - use textSearch on array cast to text  
     const { data: briefs, error: briefsError } = await supabase
-      .from('daily_critmat_emails')
-      .select('id, date_sent, top_story_title, created_at')
-      .filter('featured_materials::text', 'ilike', `%${decodedMaterial}%`)
-      .order('id', { ascending: false })
-      .limit(20);
+      .rpc('search_briefs_by_material', { material_name: decodedMaterial })
+      .limit(50);
 
     if (briefsError) {
       console.error('Error fetching briefs:', briefsError);
     }
 
     // Transform briefs to use created_at as fallback for date_sent
-    const transformedBriefs: RelatedBrief[] = (briefs || []).map(brief => ({
+    const transformedBriefs: RelatedBrief[] = (briefs || []).map((brief: { id: number; date_sent: string | null; top_story_title: string | null; created_at: string }) => ({
       id: brief.id,
       date_sent: brief.date_sent || brief.created_at.split('T')[0],
       top_story_title: brief.top_story_title || '',

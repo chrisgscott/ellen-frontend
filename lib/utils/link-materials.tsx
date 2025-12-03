@@ -89,8 +89,26 @@ export function createMaterialMap(materials: MaterialInfo[]): Map<string, Materi
 }
 
 /**
+ * Checks if a position in text is inside a URL
+ */
+function isInsideUrl(text: string, position: number): boolean {
+  // Find the start of any URL that might contain this position
+  const urlPattern = /https?:\/\/[^\s)>\]]+/gi;
+  let urlMatch;
+  while ((urlMatch = urlPattern.exec(text)) !== null) {
+    const urlStart = urlMatch.index;
+    const urlEnd = urlStart + urlMatch[0].length;
+    if (position >= urlStart && position < urlEnd) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Processes a text string and returns React nodes with material names linked.
  * Non-matching text is returned as-is, matching material names become Links.
+ * Skips matches that are inside URLs to avoid breaking links.
  */
 export function linkMaterialsInText(
   text: string,
@@ -109,6 +127,11 @@ export function linkMaterialsInText(
   while ((match = matcher.exec(text)) !== null) {
     const matchedText = match[0];
     const matchIndex = match.index;
+    
+    // Skip this match if it's inside a URL
+    if (isInsideUrl(text, matchIndex)) {
+      continue;
+    }
     
     // Add text before the match
     if (matchIndex > lastIndex) {
