@@ -220,11 +220,22 @@ export function processChildrenWithMaterialLinks(
     // Check if this element is a link
     const isLink = isOrContainsLink(child);
     
-    // Don't process inside headings
+    // Don't process inside headings or strong/bold tags
     const elementType = child.type;
+    const elementTypeStr = typeof elementType === 'string' ? elementType : 
+      (typeof elementType === 'function' ? elementType.name : '');
+    
+    // Check props for className that indicates strong/bold styling
+    const childProps = child.props as Record<string, unknown>;
+    const className = typeof childProps.className === 'string' ? childProps.className : '';
+    const isBoldByClass = className.includes('font-semibold') || className.includes('font-bold');
+    
     if (
-      typeof elementType === 'string' && 
-      elementType.match(/^h[1-6]$/)
+      elementTypeStr.match(/^h[1-6]$/) || 
+      elementTypeStr === 'strong' || 
+      elementTypeStr === 'b' ||
+      elementTypeStr === 'Strong' || // React component name
+      isBoldByClass
     ) {
       return child;
     }
@@ -235,7 +246,6 @@ export function processChildrenWithMaterialLinks(
     }
     
     // Recursively process children of this element
-    const childProps = child.props as Record<string, unknown>;
     if (childProps.children) {
       return React.cloneElement(child, {
         ...childProps,

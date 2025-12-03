@@ -46,10 +46,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform to a map of url -> materials
-    const result: ArticleMaterials[] = (data || []).map(row => ({
-      url: row.link,
-      materials: row.related_materials || [],
-    }));
+    // Handle related_materials which may be jsonb[] - ensure it's a flat string array
+    const result: ArticleMaterials[] = (data || []).map(row => {
+      let materials: string[] = [];
+      if (Array.isArray(row.related_materials)) {
+        materials = row.related_materials.flat().filter((m): m is string => typeof m === 'string');
+      }
+      return {
+        url: row.link,
+        materials,
+      };
+    });
 
     return NextResponse.json(result);
   } catch (error) {

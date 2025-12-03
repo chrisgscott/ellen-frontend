@@ -105,14 +105,22 @@ export default function DailyBriefDetailPage() {
     async function fetchArticleMaterials() {
       if (!brief?.email_content) return;
       
-      // Extract all URLs from markdown links: [text](url)
-      const urlRegex = /\[(?:[^\]]+)\]\((https?:\/\/[^)]+)\)/g;
       const urls: string[] = [];
+      
+      // Extract URLs from markdown links: [text](url)
+      const markdownLinkRegex = /\[(?:[^\]]+)\]\((https?:\/\/[^)]+)\)/g;
       let match;
-      while ((match = urlRegex.exec(brief.email_content)) !== null) {
-        // Skip audio links (Google Drive)
+      while ((match = markdownLinkRegex.exec(brief.email_content)) !== null) {
         if (!match[1].includes('drive.google.com')) {
           urls.push(match[1]);
+        }
+      }
+      
+      // Also extract bare URLs (not inside markdown link syntax)
+      const bareUrlRegex = /(?<!\]\()https?:\/\/[^\s<>)\]]+/g;
+      while ((match = bareUrlRegex.exec(brief.email_content)) !== null) {
+        if (!match[0].includes('drive.google.com') && !urls.includes(match[0])) {
+          urls.push(match[0]);
         }
       }
       
@@ -289,18 +297,18 @@ export default function DailyBriefDetailPage() {
                   a: ({ href, children }) => {
                     const materials = href ? articleMaterialsMap.get(href) : undefined;
                     return (
-                      <span>
+                      <span className="inline">
                         <a
                           href={href}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-primary hover:underline inline-flex items-center gap-1"
+                          className="text-primary hover:underline break-all"
                         >
                           {children}
-                          <ExternalLink className="w-3 h-3" />
+                          <ExternalLink className="w-3 h-3 inline ml-1 align-baseline" />
                         </a>
                         {materials && materials.length > 0 && (
-                          <span className="inline-flex flex-wrap gap-1 ml-2">
+                          <span className="inline-flex flex-wrap gap-1 ml-2 align-baseline">
                             {materials.map((mat) => (
                               <Link
                                 key={mat}
@@ -329,7 +337,7 @@ export default function DailyBriefDetailPage() {
                   ),
                   strong: ({ children }) => (
                     <strong className="font-semibold">
-                      {processChildrenWithMaterialLinks(children, materialMatcher, materialMap)}
+                      {children}
                     </strong>
                   ),
                   blockquote: ({ children }) => (
