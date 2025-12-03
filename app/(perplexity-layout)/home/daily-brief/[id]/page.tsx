@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { Mic, ChevronRight, ArrowLeft, ExternalLink, Newspaper } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { RelatedMaterialsCard } from '@/components/related-materials-card';
 import type { DailyBrief } from '@/app/api/daily-brief/route';
 import type { Material } from '@/app/(perplexity-layout)/home/chat/types';
+import type { ArticleMaterials } from '@/app/api/articles/materials/route';
 import {
   type MaterialInfo,
   createMaterialMatcher,
@@ -32,6 +34,9 @@ export default function DailyBriefDetailPage() {
   const [allMaterials, setAllMaterials] = React.useState<MaterialInfo[]>([]);
   const materialMatcher = React.useMemo(() => createMaterialMatcher(allMaterials), [allMaterials]);
   const materialMap = React.useMemo(() => createMaterialMap(allMaterials), [allMaterials]);
+  
+  // Article materials state (materials per article URL)
+  const [articleMaterialsMap, setArticleMaterialsMap] = React.useState<Map<string, string[]>>(new Map());
 
   React.useEffect(() => {
     async function fetchBrief() {
@@ -94,6 +99,44 @@ export default function DailyBriefDetailPage() {
     }
     fetchAllMaterials();
   }, []);
+
+  // Extract article URLs from content and fetch their materials
+  React.useEffect(() => {
+    async function fetchArticleMaterials() {
+      if (!brief?.email_content) return;
+      
+      // Extract all URLs from markdown links: [text](url)
+      const urlRegex = /\[(?:[^\]]+)\]\((https?:\/\/[^)]+)\)/g;
+      const urls: string[] = [];
+      let match;
+      while ((match = urlRegex.exec(brief.email_content)) !== null) {
+        // Skip audio links (Google Drive)
+        if (!match[1].includes('drive.google.com')) {
+          urls.push(match[1]);
+        }
+      }
+      
+      if (urls.length === 0) return;
+      
+      try {
+        const res = await fetch(`/api/articles/materials?urls=${encodeURIComponent(urls.join(','))}`);
+        if (!res.ok) return;
+        const data: ArticleMaterials[] = await res.json();
+        
+        // Build map of URL -> materials
+        const map = new Map<string, string[]>();
+        data.forEach(item => {
+          if (item.materials && item.materials.length > 0) {
+            map.set(item.url, item.materials);
+          }
+        });
+        setArticleMaterialsMap(map);
+      } catch (err) {
+        console.error('Error fetching article materials:', err);
+      }
+    }
+    fetchArticleMaterials();
+  }, [brief?.email_content]);
 
   // Sticky header on scroll
   React.useEffect(() => {
@@ -243,17 +286,39 @@ export default function DailyBriefDetailPage() {
                   h1: ({ children }) => <h1 className="text-2xl font-bold mt-6 mb-4">{children}</h1>,
                   h2: ({ children }) => <h2 className="text-xl font-bold mt-6 mb-3">{children}</h2>,
                   h3: ({ children }) => <h3 className="text-lg font-semibold mt-4 mb-2">{children}</h3>,
-                  a: ({ href, children }) => (
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline inline-flex items-center gap-1"
-                    >
-                      {children}
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  ),
+                  a: ({ href, children }) => {
+                    const materials = href ? articleMaterialsMap.get(href) : undefined;
+                    return (
+                      <span>
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          {children}
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                        {materials && materials.length > 0 && (
+                          <span className="inline-flex flex-wrap gap-1 ml-2">
+                            {materials.map((mat) => (
+                              <Link
+                                key={mat}
+                                href={`/home/research/${encodeURIComponent(mat)}`}
+                              >
+                                <Badge
+                                  variant="secondary"
+                                  className="text-xs px-1.5 py-0 cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                                >
+                                  {mat}
+                                </Badge>
+                              </Link>
+                            ))}
+                          </span>
+                        )}
+                      </span>
+                    );
+                  },
                   p: ({ children }) => (
                     <p className="mb-4 leading-relaxed">
                       {processChildrenWithMaterialLinks(children, materialMatcher, materialMap)}
