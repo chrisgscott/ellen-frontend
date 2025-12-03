@@ -162,19 +162,43 @@ export function linkMaterialsInText(
 }
 
 /**
+ * Checks if a React element is or contains a link
+ */
+function isOrContainsLink(element: React.ReactElement): boolean {
+  const elementType = element.type;
+  
+  // Check if this element is a link
+  if (typeof elementType === 'string' && elementType === 'a') {
+    return true;
+  }
+  
+  // Check if it's a Next.js Link component
+  if (typeof elementType === 'function' && 
+      (elementType.name === 'Link' || elementType.name === 'LinkComponent')) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
  * Recursively processes React children to link material names in text nodes.
  * Skips processing inside headings (h1-h6) and existing links.
  */
 export function processChildrenWithMaterialLinks(
   children: React.ReactNode,
   matcher: RegExp | null,
-  materialMap: Map<string, MaterialInfo>
+  materialMap: Map<string, MaterialInfo>,
+  insideLink: boolean = false
 ): React.ReactNode {
   if (!matcher) return children;
   
   return React.Children.map(children, (child) => {
-    // If it's a string, process it
+    // If it's a string, process it (but only if not inside a link)
     if (typeof child === 'string') {
+      if (insideLink) {
+        return child; // Don't create links inside links
+      }
       return linkMaterialsInText(child, matcher, materialMap);
     }
     
@@ -183,12 +207,20 @@ export function processChildrenWithMaterialLinks(
       return child;
     }
     
-    // Don't process inside headings or links
+    // Check if this element is a link
+    const isLink = isOrContainsLink(child);
+    
+    // Don't process inside headings
     const elementType = child.type;
     if (
       typeof elementType === 'string' && 
-      (elementType.match(/^h[1-6]$/) || elementType === 'a')
+      elementType.match(/^h[1-6]$/)
     ) {
+      return child;
+    }
+    
+    // If it's a link, don't process its children for more links
+    if (isLink) {
       return child;
     }
     
@@ -200,7 +232,8 @@ export function processChildrenWithMaterialLinks(
         children: processChildrenWithMaterialLinks(
           childProps.children as React.ReactNode,
           matcher,
-          materialMap
+          materialMap,
+          insideLink // Pass through the insideLink flag
         ),
       } as React.Attributes);
     }
