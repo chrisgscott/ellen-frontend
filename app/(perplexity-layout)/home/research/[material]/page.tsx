@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { AskEllenButton } from '../_components/ask-ellen-button';
 import TocSidebar from '../_components/toc-sidebar';
+import { RelatedContent } from '../_components/related-content';
 
 interface PageProps {
   params: {
@@ -273,6 +274,7 @@ const reportSections = [
   { id: 'strategic-recommendations', title: 'Strategic Recommendations', icon: Lightbulb },
   { id: 'key-stakeholders', title: 'Key Stakeholders', icon: Users },
   { id: 'sources-data-quality', title: 'Sources & Data Quality', icon: BookCopy },
+  { id: 'related-content', title: 'Related News & Briefs', icon: BookCopy },
 ];
 
 
@@ -657,6 +659,9 @@ export default async function MaterialPage({ params }: PageProps) {
                         <StringArrayDisplay content={materialData.price_reporting_sources} />
                     </SubSection>
                 </Section>
+
+                {/* Related News & Briefs - Client Component */}
+                <RelatedContent materialName={materialName} />
 
             </main>
             <div className="hidden lg:block md:col-span-1">
