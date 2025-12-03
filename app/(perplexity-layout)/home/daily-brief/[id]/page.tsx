@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
+import { badgeVariants } from '@/components/ui/badge';
 import { Mic, ChevronRight, ArrowLeft, ExternalLink, Newspaper } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
@@ -305,13 +305,9 @@ export default function DailyBriefDetailPage() {
                               <Link
                                 key={mat}
                                 href={`/home/research/${encodeURIComponent(mat)}`}
+                                className={badgeVariants({ variant: 'secondary' }) + ' text-xs px-1.5 py-0 cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors no-underline'}
                               >
-                                <Badge
-                                  variant="secondary"
-                                  className="text-xs px-1.5 py-0 cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
-                                >
-                                  {mat}
-                                </Badge>
+                                {mat}
                               </Link>
                             ))}
                           </span>
