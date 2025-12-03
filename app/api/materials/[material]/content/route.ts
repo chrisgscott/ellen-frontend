@@ -40,11 +40,12 @@ export async function GET(
     const { material } = await params;
     const decodedMaterial = decodeURIComponent(material);
 
-    // Fetch articles mentioning this material using contains for array
+    // Fetch articles mentioning this material
+    // related_materials is jsonb[], so we use a raw filter with text cast
     const { data: articles, error: articlesError } = await supabase
       .from('rss_feeds')
       .select('id, title, link, source, created_at')
-      .contains('related_materials', [decodedMaterial])
+      .filter('related_materials::text', 'ilike', `%${decodedMaterial}%`)
       .order('created_at', { ascending: false })
       .limit(20);
 
@@ -52,11 +53,12 @@ export async function GET(
       console.error('Error fetching articles:', articlesError);
     }
 
-    // Fetch daily briefs mentioning this material using contains for array
+    // Fetch daily briefs mentioning this material
+    // featured_materials is text[], so we use a raw filter with text cast
     const { data: briefs, error: briefsError } = await supabase
       .from('daily_critmat_emails')
       .select('id, date_sent, top_story_title, created_at')
-      .contains('featured_materials', [decodedMaterial])
+      .filter('featured_materials::text', 'ilike', `%${decodedMaterial}%`)
       .order('id', { ascending: false })
       .limit(20);
 
