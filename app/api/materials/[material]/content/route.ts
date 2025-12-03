@@ -40,12 +40,11 @@ export async function GET(
     const { material } = await params;
     const decodedMaterial = decodeURIComponent(material);
 
-    // Fetch articles mentioning this material
-    // Using ILIKE on cast to text since related_materials is jsonb[]
+    // Fetch articles mentioning this material using contains for array
     const { data: articles, error: articlesError } = await supabase
       .from('rss_feeds')
       .select('id, title, link, source, created_at')
-      .ilike('related_materials::text', `%${decodedMaterial}%`)
+      .contains('related_materials', [decodedMaterial])
       .order('created_at', { ascending: false })
       .limit(20);
 
@@ -53,11 +52,11 @@ export async function GET(
       console.error('Error fetching articles:', articlesError);
     }
 
-    // Fetch daily briefs mentioning this material
+    // Fetch daily briefs mentioning this material using contains for array
     const { data: briefs, error: briefsError } = await supabase
       .from('daily_critmat_emails')
       .select('id, date_sent, top_story_title, created_at')
-      .ilike('featured_materials::text', `%${decodedMaterial}%`)
+      .contains('featured_materials', [decodedMaterial])
       .order('id', { ascending: false })
       .limit(20);
 
