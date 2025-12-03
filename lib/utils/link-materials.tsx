@@ -7,39 +7,97 @@ export interface MaterialInfo {
 }
 
 /**
- * Creates a regex pattern that matches any of the material names.
+ * Common aliases/shorthands that map to official material names.
+ * Keys are lowercase aliases, values are the official material names.
+ */
+const MATERIAL_ALIASES: Record<string, string> = {
+  'rare earths': 'Rare earth elements',
+  'rare earth': 'Rare earth elements',
+  'rees': 'Rare earth elements',
+  'graphite': 'Natural graphite',
+  'electrical steel': 'Electrical steel (grain-oriented, non-grain-oriented, and amorphous)',
+  'sic': 'Silicon carbide',
+  'natural rubber': 'Rubber (natural)',
+  'pgm': 'Platinum',
+  'pgms': 'Platinum',
+  'platinum group': 'Platinum',
+  'platinum group metals': 'Platinum',
+  'li': 'Lithium',
+  'co': 'Cobalt',
+  'ni': 'Nickel',
+  'cu': 'Copper',
+  'al': 'Aluminum',
+  'ti': 'Titanium',
+  'w': 'Tungsten',
+  'mo': 'Molybdenum',
+  'nb': 'Niobium',
+  'ta': 'Tantalum',
+  'ga': 'Gallium',
+  'ge': 'Germanium',
+  'in': 'Indium',
+  'sb': 'Antimony',
+  'te': 'Tellurium',
+  'bi': 'Bismuth',
+  'czt': 'Cadmium Zinc Telluride',
+};
+
+/**
+ * Creates a regex pattern that matches any of the material names or aliases.
  * Sorts by length (longest first) to match longer names before shorter ones
  * (e.g., "Rare earth elements" before "Rare").
  */
 export function createMaterialMatcher(materials: MaterialInfo[]): RegExp | null {
   if (!materials || materials.length === 0) return null;
   
-  // Sort by length descending to match longer names first
-  const sortedNames = [...materials]
-    .map(m => m.material)
-    .sort((a, b) => b.length - a.length);
+  // Collect all matchable terms: official names + aliases
+  const allTerms = new Set<string>();
   
-  // Escape special regex characters in material names
-  const escapedNames = sortedNames.map(name => 
-    name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  // Add official material names
+  for (const m of materials) {
+    allTerms.add(m.material);
+  }
+  
+  // Add aliases (only if the target material exists)
+  const materialNamesLower = new Set(materials.map(m => m.material.toLowerCase()));
+  for (const [alias, target] of Object.entries(MATERIAL_ALIASES)) {
+    if (materialNamesLower.has(target.toLowerCase())) {
+      allTerms.add(alias);
+    }
+  }
+  
+  // Sort by length descending to match longer names first
+  const sortedTerms = [...allTerms].sort((a, b) => b.length - a.length);
+  
+  // Escape special regex characters
+  const escapedTerms = sortedTerms.map(term => 
+    term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   );
   
   // Create pattern with word boundaries for clean matching
-  // Using \b for word boundary, but also handle cases where material name
-  // might be followed by punctuation
-  const pattern = `\\b(${escapedNames.join('|')})\\b`;
+  const pattern = `\\b(${escapedTerms.join('|')})\\b`;
   
   return new RegExp(pattern, 'gi');
 }
 
 /**
- * Creates a map from lowercase material name to material info for quick lookup
+ * Creates a map from lowercase material name/alias to material info for quick lookup
  */
 export function createMaterialMap(materials: MaterialInfo[]): Map<string, MaterialInfo> {
   const map = new Map<string, MaterialInfo>();
+  
+  // Add official names
   for (const mat of materials) {
     map.set(mat.material.toLowerCase(), mat);
   }
+  
+  // Add aliases pointing to their target materials
+  for (const [alias, target] of Object.entries(MATERIAL_ALIASES)) {
+    const targetMaterial = map.get(target.toLowerCase());
+    if (targetMaterial) {
+      map.set(alias.toLowerCase(), targetMaterial);
+    }
+  }
+  
   return map;
 }
 
